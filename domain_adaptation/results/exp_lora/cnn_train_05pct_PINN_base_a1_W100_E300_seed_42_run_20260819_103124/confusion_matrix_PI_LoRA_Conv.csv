@@ -1,0 +1,6 @@
+,Ellipse,Rectangular,Step_R,Step_T,Triangular
+Ellipse,2,1,0,1,0
+Rectangular,2,3,1,0,0
+Step_R,0,0,1,1,0
+Step_T,0,2,0,0,0
+Triangular,0,0,0,3,3

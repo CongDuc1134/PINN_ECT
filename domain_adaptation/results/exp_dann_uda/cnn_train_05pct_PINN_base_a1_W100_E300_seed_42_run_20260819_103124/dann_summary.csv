@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+DANN_Adversarial_DA,20,30.0,"[10.0, 50.0]",26.67,28.72,"[11.4, 38.5]",0.19,0.2224,1.5435,0.87,55.6,15.4,43.5,38.2,0.8786,0.9577,-4.39,-0.637
