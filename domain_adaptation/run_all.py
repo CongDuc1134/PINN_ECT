@@ -60,7 +60,8 @@ def run_single_model(model_dir, output_dir=None, epochs=50, lr=2e-4, tta_steps=2
     dir_2 = os.path.join(model_res_dir, "2_few_shot_peft")
     dir_3 = os.path.join(model_res_dir, "3_domain_transfer_mmd")
     dir_4 = os.path.join(model_res_dir, "4_physics_tta")
-    for d in [dir_0, dir_1, dir_2, dir_3, dir_4]:
+    dir_5 = os.path.join(model_res_dir, "5_physics_informed_mmd")
+    for d in [dir_0, dir_1, dir_2, dir_3, dir_4, dir_5]:
         os.makedirs(d, exist_ok=True)
 
     print("\n" + "=" * 85)
@@ -75,25 +76,29 @@ def run_single_model(model_dir, output_dir=None, epochs=50, lr=2e-4, tta_steps=2
     mod_peft = import_module("domain_adaptation.2_few_shot_peft")
     mod_mmd = import_module("domain_adaptation.3_domain_transfer_mmd")
     mod_tta = import_module("domain_adaptation.4_physics_tta")
+    mod_pimmd = import_module("domain_adaptation.5_physics_informed_mmd")
 
-    print("\n>>> [0/4] Running Baseline 0: Real-Only Scratch Training (Ablation)...")
+    print("\n>>> [0/5] Running Baseline 0: Real-Only Scratch Training (Ablation)...")
     df_p0, df_s0 = mod_scratch.evaluate_real_only_scratch(model_dir=model_dir, output_dir=dir_0, epochs=100)
 
-    print("\n>>> [1/4] Running Baseline 1: Source-Only Zero-Shot (Simulation Pretrained)...")
+    print("\n>>> [1/5] Running Baseline 1: Source-Only Zero-Shot (Simulation Pretrained)...")
     df_p1, df_s1 = mod_zero.evaluate_zero_shot(model_dir=model_dir, output_dir=dir_1)
 
-    print("\n>>> [2/4] Running Direction 2: Few-Shot PEFT Head-Tuning...")
+    print("\n>>> [2/5] Running Direction 2: Few-Shot PEFT Head-Tuning...")
     df_p2, df_s2 = mod_peft.evaluate_few_shot_peft(model_dir=model_dir, output_dir=dir_2, epochs=epochs, lr=lr)
 
-    print("\n>>> [3/4] Running Direction 3: Supervised Domain Transfer MMD...")
+    print("\n>>> [3/5] Running Direction 3: Supervised Domain Transfer MMD...")
     df_p3, df_s3 = mod_mmd.evaluate_domain_transfer_mmd(model_dir=model_dir, output_dir=dir_3, epochs=epochs, lr=lr)
 
-    print("\n>>> [4/4] Running Direction 4: True Physics-Informed Test-Time Adaptation...")
+    print("\n>>> [4/5] Running Direction 4: True Physics-Informed Test-Time Adaptation...")
     df_p4, df_s4 = mod_tta.evaluate_physics_tta(model_dir=model_dir, output_dir=dir_4, steps=tta_steps)
 
+    print("\n>>> [5/5] Running Direction 5: Proposed Physics-Informed MMD (PI-MMD)...")
+    df_p5, df_s5 = mod_pimmd.evaluate_physics_informed_mmd(model_dir=model_dir, output_dir=dir_5, epochs=60)
+
     # Combine Summaries
-    df_master_summary = pd.concat([df_s0, df_s1, df_s2, df_s3, df_s4], ignore_index=True)
-    df_master_preds = pd.concat([df_p0, df_p1, df_p2, df_p3, df_p4], ignore_index=True)
+    df_master_summary = pd.concat([df_s0, df_s1, df_s2, df_s3, df_s4, df_s5], ignore_index=True)
+    df_master_preds = pd.concat([df_p0, df_p1, df_p2, df_p3, df_p4, df_p5], ignore_index=True)
 
     master_summary_csv = os.path.join(model_res_dir, "lodo_oof_master_summary.csv")
     master_preds_csv = os.path.join(model_res_dir, "lodo_oof_master_predictions.csv")

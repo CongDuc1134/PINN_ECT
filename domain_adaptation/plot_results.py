@@ -92,6 +92,7 @@ def plot_domain_adaptation_results(target_dir=None, keyword=None):
         "FewShot_PEFT",
         "Domain_Transfer_MMD",
         "Physics_TTA",
+        "Physics_Informed_MMD",
     ]
     # Lọc những phương pháp có trong data
     available_methods = [m for m in method_order if m in df_preds["method"].unique()]
@@ -101,6 +102,7 @@ def plot_domain_adaptation_results(target_dir=None, keyword=None):
         "FewShot_PEFT": "#1f77b4",              # Xanh dương
         "Domain_Transfer_MMD": "#2ca02c",       # Xanh lá
         "Physics_TTA": "#d62728",               # Đỏ nổi bật
+        "Physics_Informed_MMD": "#ff7f0e",      # Cam nổi bật (Proposed Method)
     }
 
     # =========================================================================
