@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+Source_Only_ZeroShot,20,15.0,"[0.0, 30.0]",23.33,10.16,"[0.0, 19.5]",0.079,0.8305,1.6111,1.009,207.6,16.1,50.4,91.4,1.1502,1.3094,-61.024,-0.962

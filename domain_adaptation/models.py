@@ -107,3 +107,104 @@ class ImprovedMultimodelNet(nn.Module):
         """Extract flat representation for feature alignment (MMD / CORAL)"""
         backbone_feat = self.backbone(x)
         return backbone_feat.reshape(backbone_feat.size(0), -1)
+
+
+class MultitaskMLP_PINN(nn.Module):
+    """
+    MLP-based multitask network for shape classification + joint W/L/D regression.
+    Matches checkpoints in mlp/Outputs_mlp_pinn.
+    Architecture:
+      Input: (N, 2048) or (N, 2, 32, 32)
+      Backbone: Linear(2048, 64) -> Tanh -> Linear(64, 32) -> Tanh -> Linear(32, 16) -> Tanh
+      Classifier: Linear(16, num_shapes)
+      Regressor: Linear(16, 3) -> Softplus()
+    """
+    INPUT_DIM = 32 * 32 * 2  # 2048
+
+    def __init__(self, num_shapes=5, input_dim=None):
+        super(MultitaskMLP_PINN, self).__init__()
+        self.num_shapes = num_shapes
+        in_dim = input_dim or self.INPUT_DIM
+
+        self.log_var_clf = nn.Parameter(torch.tensor(0.0))
+        self.log_var_reg = nn.Parameter(torch.tensor(0.0))
+        self.log_var_w = nn.Parameter(torch.tensor(0.0))
+        self.log_var_l = nn.Parameter(torch.tensor(0.0))
+        self.log_var_d = nn.Parameter(torch.tensor(0.0))
+
+        self.backbone = nn.Sequential(
+            nn.Linear(in_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 32),
+            nn.Tanh(),
+            nn.Linear(32, 16),
+            nn.Tanh(),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(16, num_shapes),
+        )
+        self.reg_head = nn.Sequential(
+            nn.Linear(16, 3),
+            nn.Softplus(),
+        )
+
+    def forward(self, x):
+        if x.dim() > 2:
+            x = x.reshape(x.size(0), -1)
+        shared_feat = self.backbone(x)
+        shape_logits = self.classifier(shared_feat)
+        y_pred_wld = self.reg_head(shared_feat)
+        return shape_logits, y_pred_wld
+
+    def extract_features(self, x):
+        if x.dim() > 2:
+            x = x.reshape(x.size(0), -1)
+        return self.backbone(x)
+
+
+class RegressionMLP_PINN(nn.Module):
+    """
+    MLP-based single-task network for W/L/D regression (Xiong et al. 2023).
+    Matches checkpoints in mlp/Outputs_xiong_pinn.
+    """
+    INPUT_DIM = 32 * 32 * 2  # 2048
+
+    def __init__(self, num_shapes=5, input_dim=None):
+        super(RegressionMLP_PINN, self).__init__()
+        self.num_shapes = num_shapes
+        in_dim = input_dim or self.INPUT_DIM
+
+        self.log_var_clf = nn.Parameter(torch.tensor(0.0))
+        self.log_var_w = nn.Parameter(torch.tensor(0.0))
+        self.log_var_l = nn.Parameter(torch.tensor(0.0))
+        self.log_var_d = nn.Parameter(torch.tensor(0.0))
+
+        self.backbone = nn.Sequential(
+            nn.Linear(in_dim, 64),
+            nn.Tanh(),
+            nn.Linear(64, 32),
+            nn.Tanh(),
+            nn.Linear(32, 16),
+            nn.Tanh(),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(16, num_shapes),
+        )
+        self.reg_head = nn.Sequential(
+            nn.Linear(16, 3),
+            nn.Softplus(),
+        )
+
+    def forward(self, x):
+        if x.dim() > 2:
+            x = x.reshape(x.size(0), -1)
+        shared_feat = self.backbone(x)
+        shape_logits = self.classifier(shared_feat)
+        y_pred_wld = self.reg_head(shared_feat)
+        return shape_logits, y_pred_wld
+
+    def extract_features(self, x):
+        if x.dim() > 2:
+            x = x.reshape(x.size(0), -1)
+        return self.backbone(x)
+

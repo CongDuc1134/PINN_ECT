@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+Domain_Transfer_CORAL,20,15.0,"[0.0, 35.0]",16.67,18.89,"[0.0, 34.3]",-0.022,0.392,1.7363,0.7281,98.0,17.4,36.4,50.6,0.9522,1.0935,-13.632,-0.392

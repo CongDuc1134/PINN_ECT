@@ -11,6 +11,8 @@ import pickle
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, mean_absolute_error, mean_squared_error
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -22,17 +24,35 @@ from load_real_experiment_data import (
     load_real_experiment_for_inference,
     denormalize_regression_predictions,
 )
-from domain_adaptation.models import ImprovedMultimodelNet
+from domain_adaptation.models import (
+    ImprovedMultimodelNet,
+    MultitaskMLP_PINN,
+    RegressionMLP_PINN,
+)
 
 UNIQUE_SHAPES = ['Ellipse', 'Rectangular', 'Step_R', 'Step_T', 'Triangular']
 
 
-def list_all_available_checkpoints():
-    """Dynamically finds all directories containing best_model_pytorch.pth."""
+def list_all_available_checkpoints(model_type="all"):
+    """
+    Dynamically finds all directories containing best_model_pytorch.pth.
+    model_type: 'all', 'cnn', 'mlp', 'xiong'
+    """
     import glob
-    pinn_pat = os.path.join(PROJECT_ROOT, "cnn", "Outputs_cnn_pinn", "**", "best_model_pytorch.pth")
-    base_pat = os.path.join(PROJECT_ROOT, "cnn", "Outputs_cnn_baseline", "**", "best_model_pytorch.pth")
-    all_pth = glob.glob(pinn_pat, recursive=True) + glob.glob(base_pat, recursive=True)
+    cnn_pinn = glob.glob(os.path.join(PROJECT_ROOT, "cnn", "Outputs_cnn_pinn", "**", "best_model_pytorch.pth"), recursive=True)
+    cnn_base = glob.glob(os.path.join(PROJECT_ROOT, "cnn", "Outputs_cnn_baseline", "**", "best_model_pytorch.pth"), recursive=True)
+    mlp_pinn = glob.glob(os.path.join(PROJECT_ROOT, "mlp", "Outputs_mlp_pinn", "**", "best_model_pytorch.pth"), recursive=True)
+    xiong_pinn = glob.glob(os.path.join(PROJECT_ROOT, "mlp", "Outputs_xiong_pinn", "**", "best_model_pytorch.pth"), recursive=True)
+
+    if model_type == "cnn":
+        all_pth = cnn_pinn + cnn_base
+    elif model_type == "mlp":
+        all_pth = mlp_pinn
+    elif model_type == "xiong":
+        all_pth = xiong_pinn
+    else:
+        all_pth = cnn_pinn + cnn_base + mlp_pinn + xiong_pinn
+
     dirs = [os.path.dirname(p) for p in all_pth]
     return sorted(list(set(dirs)))
 
@@ -40,7 +60,7 @@ def list_all_available_checkpoints():
 def find_default_checkpoint_dir(keyword=None):
     """
     Automatically finds the checkpoint directory.
-    - If keyword is given (e.g. '10pct', 'a100', 'seed_123'), matches the best candidate.
+    - If keyword is given (e.g. '10pct', 'mlp', 'a100', 'seed_123'), matches the best candidate.
     - If keyword is None, auto-selects the 5% PINN base model.
     """
     all_dirs = list_all_available_checkpoints()
@@ -67,25 +87,37 @@ def find_default_checkpoint_dir(keyword=None):
 
 def get_model_tag(model_dir):
     """
-    Generates a clean directory tag for organizing results by model.
-    E.g.: 'train_05pct_PINN_base_a1_W100_E300_seed_42_run_20260819_103124'
+    Generates a clean, unique directory tag for organizing results by model.
+    E.g.: 'cnn_train_05pct_PINN_base_a1_W100_E300_seed_42_run_20260819_103124'
+          'mlp_train_05pct_PINN_base_a1_W0_E300_seed_42_run_20260829_050236'
+          'xiong_train_05pct_PINN_base_a1_W0_E300_seed_42_run_20260830_023407'
     """
     if not model_dir:
         return "default_model"
     norm = os.path.normpath(model_dir)
     parts = norm.split(os.sep)
+
+    arch = "cnn"
+    if "Outputs_mlp_pinn" in norm:
+        arch = "mlp"
+    elif "Outputs_xiong_pinn" in norm:
+        arch = "xiong"
+    elif "Outputs_cnn_baseline" in norm:
+        arch = "cnn_baseline"
+
     pct = "model"
     for p in parts:
         if "train_" in p:
             pct = p
             break
     run_name = os.path.basename(norm)
-    return f"{pct}_{run_name}"
+    return f"{arch}_{pct}_{run_name}"
 
 
 def load_pretrained_checkpoint(model_dir=None, device="cpu"):
     """
     Loads pretrained model weights and normalization scalers.
+    Auto-detects architecture: ImprovedMultimodelNet (CNN), MultitaskMLP_PINN (MLP), or RegressionMLP_PINN (Xiong).
     Returns: (model, x_scaler, y_scaler, model_dir)
     """
     if not model_dir:
@@ -109,18 +141,25 @@ def load_pretrained_checkpoint(model_dir=None, device="cpu"):
         with open(y_scaler_path, "rb") as f:
             y_scaler = pickle.load(f)
 
-    # Initialize model and load weights
-    model = ImprovedMultimodelNet(num_shapes=len(UNIQUE_SHAPES)).to(device)
+    # Load checkpoint state dict
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-        model.load_state_dict(checkpoint['model_state_dict'])
-    elif isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
-        model.load_state_dict(checkpoint['state_dict'])
-    elif isinstance(checkpoint, dict):
-        model.load_state_dict(checkpoint)
+    if isinstance(checkpoint, dict):
+        state = checkpoint.get('model_state_dict', checkpoint.get('state_dict', checkpoint))
     else:
-        model = checkpoint
+        state = checkpoint
 
+    # Auto-detect model architecture from weights
+    if 'backbone.0.weight' in state and state['backbone.0.weight'].dim() == 4:
+        # CNN Architecture (ImprovedMultimodelNet)
+        model = ImprovedMultimodelNet(num_shapes=len(UNIQUE_SHAPES)).to(device)
+    elif 'classifier.0.weight' in state:
+        # Multitask MLP (MultitaskMLP_PINN)
+        model = MultitaskMLP_PINN(num_shapes=len(UNIQUE_SHAPES)).to(device)
+    else:
+        # Single-task Regression MLP (RegressionMLP_PINN)
+        model = RegressionMLP_PINN(num_shapes=len(UNIQUE_SHAPES)).to(device)
+
+    model.load_state_dict(state, strict=False)
     model.eval()
     return model, x_scaler, y_scaler, model_dir
 
@@ -295,3 +334,183 @@ def compute_pooled_oof_summary(df_predictions, output_dir=None):
         })
 
     return pd.DataFrame(summary_rows)
+
+
+class KendallMultiTaskLoss(nn.Module):
+    """
+    Kendall et al. (CVPR 2018) Homoscedastic Multi-Task Uncertainty Loss:
+    L = exp(-s_clf) * L_clf + 0.5 * s_clf + sum_i [ 0.5 * exp(-s_i) * L_reg_i + 0.5 * s_i ]
+    Balances classification and multi-dimensional regression dynamically.
+    """
+    def __init__(self, log_var_clf=None, log_var_w=None, log_var_l=None, log_var_d=None):
+        super().__init__()
+        self.log_var_clf = log_var_clf if log_var_clf is not None else nn.Parameter(torch.tensor(0.0))
+        self.log_var_w = log_var_w if log_var_w is not None else nn.Parameter(torch.tensor(0.0))
+        self.log_var_l = log_var_l if log_var_l is not None else nn.Parameter(torch.tensor(0.0))
+        self.log_var_d = log_var_d if log_var_d is not None else nn.Parameter(torch.tensor(0.0))
+
+    def forward(self, clf_logits, clf_targets, reg_preds, reg_targets):
+        ce_loss = F.cross_entropy(clf_logits, clf_targets)
+        clf_precision = torch.exp(-self.log_var_clf)
+        loss_clf = clf_precision * ce_loss + 0.5 * self.log_var_clf
+
+        mse_w = F.mse_loss(reg_preds[:, 0], reg_targets[:, 0])
+        mse_l = F.mse_loss(reg_preds[:, 1], reg_targets[:, 1])
+        mse_d = F.mse_loss(reg_preds[:, 2], reg_targets[:, 2])
+
+        loss_w = 0.5 * torch.exp(-self.log_var_w) * mse_w + 0.5 * self.log_var_w
+        loss_l = 0.5 * torch.exp(-self.log_var_l) * mse_l + 0.5 * self.log_var_l
+        loss_d = 0.5 * torch.exp(-self.log_var_d) * mse_d + 0.5 * self.log_var_d
+
+        total_loss = loss_clf + loss_w + loss_l + loss_d
+        return total_loss
+
+
+def compute_coral_loss(source, target):
+    """
+    Deep CORAL (Sun & Saenko, ECCV 2016):
+    Matches the 2nd-order statistics (covariance) between source and target representations.
+    """
+    d = source.size(1)
+    ns = source.size(0)
+    nt = target.size(0)
+
+    source_mean = torch.mean(source, dim=0, keepdim=True)
+    source_centered = source - source_mean
+    cs = torch.matmul(source_centered.t(), source_centered) / (ns - 1.0 if ns > 1 else 1.0)
+
+    target_mean = torch.mean(target, dim=0, keepdim=True)
+    target_centered = target - target_mean
+    ct = torch.matmul(target_centered.t(), target_centered) / (nt - 1.0 if nt > 1 else 1.0)
+
+    loss = torch.sum((cs - ct) ** 2) / (4.0 * d * d)
+    return loss
+
+
+def apply_physics_augmentations(X, y_shape, y_reg, noise_std=0.015, dc_shift_std=0.02):
+    """
+    Applies physics-preserving augmentations to real ECT measurements:
+    1. Original samples (N, 2, 32, 32)
+    2. Horizontal reflection (scan-axis symmetry)
+    3. Vertical reflection (defect symmetry)
+    4. Sensor lift-off jitter / instrument noise
+    5. Baseline DC drift
+    Returns augmented (X_aug, y_shape_aug, y_reg_aug)
+    """
+    aug_X = [X]
+    aug_ys = [y_shape]
+    aug_yr = [y_reg]
+
+    device = X.device
+    N = X.size(0)
+
+    # 1. Horizontal reflection (flip X-axis / columns)
+    X_hflip = torch.flip(X, dims=[3])
+    aug_X.append(X_hflip)
+    aug_ys.append(y_shape)
+    aug_yr.append(y_reg)
+
+    # 2. Vertical reflection (flip Y-axis / rows)
+    X_vflip = torch.flip(X, dims=[2])
+    aug_X.append(X_vflip)
+    aug_ys.append(y_shape)
+    aug_yr.append(y_reg)
+
+    # 3. Sensor lift-off noise injection
+    noise = torch.randn_like(X) * noise_std
+    X_noisy = X + noise
+    aug_X.append(X_noisy)
+    aug_ys.append(y_shape)
+    aug_yr.append(y_reg)
+
+    # 4. Baseline DC drift on Channel 0 (magnetic field)
+    X_dc = X.clone()
+    dc = (torch.rand(N, 1, 1, 1, device=device) * 2.0 - 1.0) * dc_shift_std
+    X_dc[:, 0:1, :, :] += dc
+    aug_X.append(X_dc)
+    aug_ys.append(y_shape)
+    aug_yr.append(y_reg)
+
+    return torch.cat(aug_X, dim=0), torch.cat(aug_ys, dim=0), torch.cat(aug_yr, dim=0)
+
+
+def load_simulation_source_dataset(num_samples_per_class=40, x_scaler=None, y_scaler=None, device="cpu", seed=42):
+    """
+    Loads a balanced, representative source domain dataset from FEM simulations (Crack_Shape_Images/ + labels.csv).
+    Caches the processed tensor locally to ensure instant (< 0.05s) subsequent loads.
+    Returns: (X_source_tensor, y_source_shape, y_source_reg)
+    """
+    cache_path = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", f"source_sim_subset_{num_samples_per_class * 5}.pt")
+    if os.path.exists(cache_path):
+        try:
+            cached = torch.load(cache_path, map_location=device, weights_only=False)
+            return cached['X'].to(device), cached['y_shape'].to(device), cached['y_reg'].to(device)
+        except Exception:
+            pass
+
+    labels_csv_path = os.path.join(PROJECT_ROOT, "labels.csv")
+    sim_dir = os.path.join(PROJECT_ROOT, "Crack_Shape_Images")
+    if not os.path.exists(labels_csv_path) or not os.path.exists(sim_dir):
+        raise FileNotFoundError("Could not find labels.csv or Crack_Shape_Images directory!")
+
+    df_labels = pd.read_csv(labels_csv_path)
+    shape_to_idx = {s: i for i, s in enumerate(UNIQUE_SHAPES)}
+
+    sampled_rows = []
+    rng = np.random.default_rng(seed)
+    for shape_name in UNIQUE_SHAPES:
+        sub_df = df_labels[df_labels['shape'] == shape_name]
+        if len(sub_df) > num_samples_per_class:
+            chosen_idx = rng.choice(sub_df.index, size=num_samples_per_class, replace=False)
+            sampled_rows.append(sub_df.loc[chosen_idx])
+        else:
+            sampled_rows.append(sub_df)
+
+    df_sampled = pd.concat(sampled_rows, ignore_index=True)
+
+    from load_real_experiment_data import preprocess_single_real_image
+
+    img_list = []
+    y_shapes = []
+    y_regs = []
+
+    for _, row in df_sampled.iterrows():
+        fpath = os.path.join(sim_dir, row['filename'])
+        if not os.path.exists(fpath):
+            continue
+        try:
+            mat = pd.read_csv(fpath, skiprows=4, header=None).values.astype(np.float32)
+            two_ch = preprocess_single_real_image(mat)
+            img_list.append(two_ch)
+            y_shapes.append(shape_to_idx[row['shape']])
+            y_regs.append([float(row['width']), float(row['length']), float(row['depth'])])
+        except Exception:
+            continue
+
+    X_np = np.array(img_list, dtype=np.float32)  # (N, 32, 32, 2)
+    if x_scaler is not None:
+        N = X_np.shape[0]
+        reshaped = X_np.reshape(-1, 2)
+        scaled = x_scaler.transform(reshaped)
+        X_np = scaled.reshape(N, 32, 32, 2)
+
+    X_tensor = torch.tensor(X_np, dtype=torch.float32).permute(0, 3, 1, 2).contiguous()
+    y_shape_tensor = torch.tensor(y_shapes, dtype=torch.long)
+
+    y_reg_np = np.array(y_regs, dtype=np.float32)
+    if y_scaler is not None:
+        if hasattr(y_scaler, 'transform'):
+            y_reg_norm = y_scaler.transform(y_reg_np)
+        elif hasattr(y_scaler, 'data_max_'):
+            y_reg_norm = y_reg_np / y_scaler.data_max_
+        else:
+            y_reg_norm = y_reg_np
+    else:
+        y_reg_norm = y_reg_np
+    y_reg_tensor = torch.tensor(y_reg_norm, dtype=torch.float32)
+
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    torch.save({'X': X_tensor, 'y_shape': y_shape_tensor, 'y_reg': y_reg_tensor}, cache_path)
+
+    return X_tensor.to(device), y_shape_tensor.to(device), y_reg_tensor.to(device)
+

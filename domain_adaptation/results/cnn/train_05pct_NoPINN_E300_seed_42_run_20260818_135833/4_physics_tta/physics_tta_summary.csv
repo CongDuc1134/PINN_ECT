@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+Physics_TTA,20,30.0,"[10.0, 50.0]",50.0,29.94,"[10.0, 40.6]",0.234,0.8794,0.8999,1.1329,219.8,9.0,56.6,95.2,0.9708,1.1257,-67.224,-1.453

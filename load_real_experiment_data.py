@@ -20,6 +20,7 @@ import sys
 import re
 import numpy as np
 import pandas as pd
+import scipy.ndimage
 import torch
 
 try:
@@ -143,17 +144,17 @@ def preprocess_single_real_image(matrix_2d, scale_factor=1.0):
     """
     arr = np.array(matrix_2d, dtype=np.float32)
     
-    # 1. Đảm bảo kích thước 32x32
-    if arr.shape == (31, 31):
-        arr = np.vstack([arr, arr[-1:, :]])
-        arr = np.hstack([arr, arr[:, -1:]])
-    elif arr.shape != (32, 32):
-        if arr.shape[0] == 32 and arr.shape[1] == 31:
-            arr = np.hstack([arr, arr[:, -1:]])
-        elif arr.shape[0] == 31 and arr.shape[1] == 32:
-            arr = np.vstack([arr, arr[-1:, :]])
+    # 1. Đảm bảo kích thước 32x32 qua nội suy song tuyến (Bilinear Interpolation) bảo toàn tâm và đối xứng
+    if arr.shape != (32, 32):
+        zoom_factors = (32.0 / arr.shape[0], 32.0 / arr.shape[1])
+        res = scipy.ndimage.zoom(arr, zoom_factors, order=1)
+        if res.shape != (32, 32):
+            out = np.zeros((32, 32), dtype=np.float32)
+            h, w = min(32, res.shape[0]), min(32, res.shape[1])
+            out[:h, :w] = res[:h, :w]
+            arr = out
         else:
-            raise ValueError(f"Kích thước ma trận không hợp lệ: {arr.shape}. Cần (31, 31) hoặc (32, 32).")
+            arr = res.astype(np.float32)
         
     # 2. Nhân hệ số co dãn biên độ (nếu cần)
     field_data = arr * scale_factor

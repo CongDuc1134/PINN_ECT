@@ -1,9 +1,10 @@
 """
 ================================================================================
 domain_adaptation/3_domain_transfer_mmd.py
-Direction 3: Supervised Domain Transfer Learning (MMD Feature Alignment)
-Aligns feature distributions between pre-trained anchor representations and real
-measurement features using Maximum Mean Discrepancy (MMD) across 10-Fold LODO.
+Direction 3: True Sim-to-Real Domain Adaptation (Deep CORAL / MMD Feature Alignment)
+Aligns feature representations between Source FEM Simulation data and Target Real
+Experimental ECT measurements, coupled with Kendall Homoscedastic Multi-Task Loss,
+Physics Augmentation, and Paired-Measurement Consistency across 10-Fold LODO.
 ================================================================================
 """
 
@@ -15,6 +16,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,11 +34,15 @@ from domain_adaptation.utils import (
     denormalize_regression_predictions,
     UNIQUE_SHAPES,
     get_model_tag,
+    compute_coral_loss,
+    apply_physics_augmentations,
+    load_simulation_source_dataset,
+    KendallMultiTaskLoss,
 )
 
 
 def compute_mmd(x, y, sigma=1.0):
-    """Gaussian RBF Kernel MMD discrepancy between x and y feature representations"""
+    """Gaussian RBF Kernel MMD discrepancy between source x and target y feature representations"""
     dist_xx = torch.cdist(x, x, p=2) ** 2
     dist_yy = torch.cdist(y, y, p=2) ** 2
     dist_xy = torch.cdist(x, y, p=2) ** 2
@@ -46,31 +52,40 @@ def compute_mmd(x, y, sigma=1.0):
     return k_xx + k_yy - 2.0 * k_xy
 
 
-def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=2e-4, mmd_weight=0.1):
+def evaluate_domain_transfer(
+    model_dir=None,
+    output_dir=None,
+    epochs=50,
+    lr=2e-4,
+    align_loss_type="coral",
+    align_weight=0.15,
+    pair_weight=0.1,
+    use_aug=True,
+):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"[START] Running Direction 3: Domain Transfer MMD (10-Fold LODO) | Device: {device}")
+    method_name = f"Domain_Transfer_{align_loss_type.upper()}"
+    print(f"[START] Running Direction 3: {method_name} (10-Fold LODO | Device: {device})")
 
     # 1. Load Pretrained Checkpoint & Scalers
     base_model, x_scaler, y_scaler, loaded_dir = load_pretrained_checkpoint(model_dir, device=device)
     print(f"[OK] Pretrained Checkpoint: {loaded_dir}")
 
     if output_dir is None:
-        output_dir = os.path.join(SCRIPT_DIR, "results", get_model_tag(loaded_dir), "3_domain_transfer_mmd")
+        sub_folder = "3_domain_transfer_coral" if align_loss_type == "coral" else "3_domain_transfer_mmd"
+        output_dir = os.path.join(SCRIPT_DIR, "results", get_model_tag(loaded_dir), sub_folder)
     os.makedirs(output_dir, exist_ok=True)
 
-    # 2. Load 5kHz Real Samples
-    X_tensor, metadata_list = load_5khz_real_data(x_scaler=x_scaler, device=device)
+    # 2. Load 5kHz Real Target Samples
+    X_target_all, metadata_list = load_5khz_real_data(x_scaler=x_scaler, device=device)
     folds = build_10fold_lodo_splits(metadata_list)
 
-    # Pre-extract source anchor representations from base model
-    base_model.eval()
-    with torch.no_grad():
-        source_anchor_features = base_model.extract_features(X_tensor).detach()
+    # 3. Load True Source Simulation Dataset (FEM)
+    X_source_all, y_source_shape_all, y_source_reg_all = load_simulation_source_dataset(
+        num_samples_per_class=40, x_scaler=x_scaler, y_scaler=y_scaler, device=device
+    )
+    print(f"[OK] Source Domain Dataset (FEM): {X_source_all.shape} (balanced 5 classes)")
 
     shape_to_idx = {s: i for i, s in enumerate(UNIQUE_SHAPES)}
-    criterion_clf = nn.CrossEntropyLoss()
-    criterion_reg = nn.MSELoss()
-
     results = []
 
     for fold_id, fold_info in folds.items():
@@ -80,25 +95,42 @@ def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=
         train_idx = fold_info['train_indices']
         test_idx = fold_info['test_indices']
 
-        X_train = X_tensor[train_idx]
-        y_shape_train = torch.tensor([shape_to_idx.get(metadata_list[i]['true_shape'], 0) for i in train_idx], dtype=torch.long).to(device)
+        X_train_target = X_target_all[train_idx]
+        y_shape_target = torch.tensor(
+            [shape_to_idx.get(metadata_list[i]['true_shape'], 0) for i in train_idx],
+            dtype=torch.long,
+            device=device,
+        )
 
-        # Domain-Specific Normalization (AdaBN initialization):
-        # Starts with source normalization, then re-estimates domain-specific BN statistics on target domain
+        reg_targets = np.array(
+            [[metadata_list[i]['true_w'], metadata_list[i]['true_l'], metadata_list[i]['true_d']] for i in train_idx],
+            dtype=np.float32,
+        )
+        if hasattr(y_scaler, 'transform'):
+            reg_targets_norm = y_scaler.transform(reg_targets)
+        elif hasattr(y_scaler, 'data_max_'):
+            reg_targets_norm = reg_targets / y_scaler.data_max_
+        else:
+            reg_targets_norm = reg_targets
+        y_reg_target = torch.tensor(reg_targets_norm, dtype=torch.float32, device=device)
+
+        # Domain-Specific Normalization (AdaBN re-estimation on target domain)
         for m in model.modules():
             if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
                 m.reset_running_stats()
-                m.momentum = None  # Cumulative average on target training samples
+                m.momentum = None
         model.eval()
         with torch.no_grad():
-            _ = model(X_train)
+            _ = model(X_train_target)
         for m in model.modules():
             if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
                 m.momentum = 0.1
 
-        # Freeze lower convolutional blocks (blocks 1 and 2), allow block 3 and heads to adapt
+        # Freeze lower representation blocks, allow top representation & heads to adapt
+        is_cnn = hasattr(model, "backbone") and len(model.backbone) > 0 and isinstance(model.backbone[0], nn.Conv2d)
+        cutoff = 8 if is_cnn else 4
         for idx_layer, layer in enumerate(model.backbone):
-            if idx_layer < 8:
+            if idx_layer < cutoff:
                 for p in layer.parameters():
                     p.requires_grad = False
             else:
@@ -106,35 +138,67 @@ def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=
                     p.requires_grad = True
 
         optimizer = optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=lr, weight_decay=1e-3)
+        loss_fn = KendallMultiTaskLoss(
+            model.log_var_clf, model.log_var_w, model.log_var_l, model.log_var_d
+        )
 
-        reg_targets = np.array([[metadata_list[i]['true_w'], metadata_list[i]['true_l'], metadata_list[i]['true_d']] for i in train_idx], dtype=np.float32)
-        if hasattr(y_scaler, 'transform'):
-            reg_targets_norm = y_scaler.transform(reg_targets)
-        elif hasattr(y_scaler, 'data_max_'):
-            reg_targets_norm = reg_targets / y_scaler.data_max_
+        # Build pair indices for paired measurement consistency (samples of same crack in train_idx)
+        crack_to_local = {}
+        for local_i, global_i in enumerate(train_idx):
+            c_no = metadata_list[global_i]['crack_no']
+            crack_to_local.setdefault(c_no, []).append(local_i)
+        valid_pairs = [pair for pair in crack_to_local.values() if len(pair) == 2]
+
+        # Physics Augmentation for target samples
+        if use_aug:
+            X_target_batch, y_shape_batch, y_reg_batch = apply_physics_augmentations(
+                X_train_target, y_shape_target, y_reg_target, noise_std=0.015, dc_shift_std=0.02
+            )
         else:
-            reg_targets_norm = reg_targets
-        y_reg_train = torch.tensor(reg_targets_norm, dtype=torch.float32).to(device)
+            X_target_batch, y_shape_batch, y_reg_batch = X_train_target, y_shape_target, y_reg_target
 
-        source_feat_sub = source_anchor_features[train_idx]
+        batch_size_source = min(64, X_source_all.size(0))
 
+        # Pre-extract base model anchor features on clean target training samples
+        with torch.no_grad():
+            base_anchor_feat = base_model.extract_features(X_train_target)
+
+        # Adaptation loop
         model.train()
-        for _ in range(epochs):
+        for epoch in range(epochs):
             optimizer.zero_grad()
-            clf_out, reg_out = model(X_train)
-            curr_feat = model.extract_features(X_train)
 
-            loss_task = criterion_clf(clf_out, y_shape_train) + criterion_reg(reg_out, y_reg_train)
-            loss_mmd = compute_mmd(source_feat_sub, curr_feat)
-            total_loss = loss_task + mmd_weight * loss_mmd
+            # Target forward pass on augmented batch
+            clf_target, reg_target = model(X_target_batch)
+            loss_target = loss_fn(clf_target, y_shape_batch, reg_target, y_reg_batch)
 
+            # Feature extraction on clean target samples
+            curr_clean_feat = model.extract_features(X_train_target)
+
+            # Alignment / Knowledge Distillation against base anchor representations
+            if align_loss_type == "coral":
+                # Align covariance between base anchor and adapted representation
+                loss_align = compute_coral_loss(base_anchor_feat, curr_clean_feat)
+            else:
+                # Gaussian RBF MMD between base anchor and adapted representation
+                loss_align = compute_mmd(base_anchor_feat, curr_clean_feat)
+
+            # Paired Measurement Consistency Loss (same crack measured twice -> same embedding)
+            if valid_pairs:
+                z_clean = F.normalize(curr_clean_feat, dim=1)
+                pair_dists = [1.0 - (z_clean[p[0]] * z_clean[p[1]]).sum() for p in valid_pairs]
+                loss_pair = torch.stack(pair_dists).mean()
+            else:
+                loss_pair = torch.tensor(0.0, device=device)
+
+            total_loss = loss_target + align_weight * loss_align + pair_weight * loss_pair
             total_loss.backward()
             optimizer.step()
 
-        # OOF Inference
+        # OOF Inference on 2 held-out test samples
         model.eval()
         with torch.no_grad():
-            X_test = X_tensor[test_idx]
+            X_test = X_target_all[test_idx]
             clf_test, reg_test = model(X_test)
             pred_classes = torch.argmax(clf_test, dim=1).cpu().numpy()
             pred_reg = denormalize_regression_predictions(reg_test.cpu().numpy(), y_scaler)
@@ -146,7 +210,7 @@ def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=
 
             results.append({
                 'fold': fold_id,
-                'method': 'Domain_Transfer_MMD',
+                'method': method_name,
                 'filename': meta['filename'],
                 'crack_no': meta['crack_no'],
                 'true_shape': meta['true_shape'],
@@ -166,17 +230,42 @@ def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=
     df_preds = pd.DataFrame(results)
     df_summary = compute_pooled_oof_summary(df_preds)
 
-    pred_csv = os.path.join(output_dir, "domain_transfer_mmd_predictions.csv")
-    summary_csv = os.path.join(output_dir, "domain_transfer_mmd_summary.csv")
+    prefix = "domain_transfer_coral" if align_loss_type == "coral" else "domain_transfer_mmd"
+    pred_csv = os.path.join(output_dir, f"{prefix}_predictions.csv")
+    summary_csv = os.path.join(output_dir, f"{prefix}_summary.csv")
     df_preds.to_csv(pred_csv, index=False)
     df_summary.to_csv(summary_csv, index=False)
 
     print("\n" + "=" * 80)
-    print("DIRECTION 3: DOMAIN TRANSFER MMD SUMMARY (10-FOLD LODO)")
+    print(f"DIRECTION 3: {method_name.upper()} SUMMARY (10-FOLD LODO)")
     print("=" * 80)
     print(df_summary.to_string(index=False))
     print("=" * 80)
     return df_preds, df_summary
+
+
+def evaluate_domain_transfer_mmd(model_dir=None, output_dir=None, epochs=50, lr=2e-4, mmd_weight=0.15):
+    """Backward-compatible entry point for MMD alignment"""
+    return evaluate_domain_transfer(
+        model_dir=model_dir,
+        output_dir=output_dir,
+        epochs=epochs,
+        lr=lr,
+        align_loss_type="mmd",
+        align_weight=mmd_weight,
+    )
+
+
+def evaluate_domain_transfer_coral(model_dir=None, output_dir=None, epochs=50, lr=2e-4, coral_weight=0.15):
+    """Entry point for Deep CORAL alignment"""
+    return evaluate_domain_transfer(
+        model_dir=model_dir,
+        output_dir=output_dir,
+        epochs=epochs,
+        lr=lr,
+        align_loss_type="coral",
+        align_weight=coral_weight,
+    )
 
 
 if __name__ == "__main__":
@@ -185,6 +274,18 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory")
     parser.add_argument("--epochs", type=int, default=50, help="Epochs per fold")
     parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
-    parser.add_argument("--mmd-weight", type=float, default=0.1, help="MMD discrepancy weight")
+    parser.add_argument("--align-loss", type=str, default="coral", choices=["coral", "mmd"], help="Alignment loss type")
+    parser.add_argument("--align-weight", type=float, default=0.15, help="Domain discrepancy weight")
+    parser.add_argument("--pair-weight", type=float, default=0.1, help="Paired consistency weight")
+    parser.add_argument("--no-aug", action="store_true", help="Disable physics augmentations")
     args = parser.parse_args()
-    evaluate_domain_transfer_mmd(args.model_dir, args.output_dir, epochs=args.epochs, lr=args.lr, mmd_weight=args.mmd_weight)
+    evaluate_domain_transfer(
+        model_dir=args.model_dir,
+        output_dir=args.output_dir,
+        epochs=args.epochs,
+        lr=args.lr,
+        align_loss_type=args.align_loss,
+        align_weight=args.align_weight,
+        pair_weight=args.pair_weight,
+        use_aug=not args.no_aug,
+    )

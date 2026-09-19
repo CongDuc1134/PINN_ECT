@@ -32,19 +32,23 @@ from domain_adaptation.utils import (
     denormalize_regression_predictions,
     UNIQUE_SHAPES,
     get_model_tag,
+    apply_physics_augmentations,
+    KendallMultiTaskLoss,
 )
 
 
-def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4):
+def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4, peft_type="head", use_aug=True):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"[START] Running Direction 2: Few-Shot PEFT (10-Fold LODO) | Device: {device}")
+    method_name = "FewShot_BitFit" if peft_type == "bitfit" else "FewShot_PEFT"
+    print(f"[START] Running Direction 2: {method_name} (10-Fold LODO | Aug={use_aug}) | Device: {device}")
 
     # 1. Load Pretrained Checkpoint & Scalers
     base_model, x_scaler, y_scaler, loaded_dir = load_pretrained_checkpoint(model_dir, device=device)
     print(f"[OK] Pretrained Checkpoint: {loaded_dir}")
 
     if output_dir is None:
-        output_dir = os.path.join(SCRIPT_DIR, "results", get_model_tag(loaded_dir), "2_few_shot_peft")
+        sub_folder = "2_few_shot_bitfit" if peft_type == "bitfit" else "2_few_shot_peft"
+        output_dir = os.path.join(SCRIPT_DIR, "results", get_model_tag(loaded_dir), sub_folder)
     os.makedirs(output_dir, exist_ok=True)
 
     # 2. Load 5kHz Real Samples
@@ -52,21 +56,29 @@ def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4):
     folds = build_10fold_lodo_splits(metadata_list)
 
     shape_to_idx = {s: i for i, s in enumerate(UNIQUE_SHAPES)}
-    criterion_clf = nn.CrossEntropyLoss()
-    criterion_reg = nn.MSELoss()
-
     results = []
 
     for fold_id, fold_info in folds.items():
         print(f"  --> Processing Fold {fold_id:2d}/10 (Test Crack: No{fold_info['crack_no']:2d} - {fold_info['true_shape']})...")
         model = copy.deepcopy(base_model).to(device)
 
-        # Freeze shared backbone
-        for param in model.backbone.parameters():
-            param.requires_grad = False
+        if peft_type == "bitfit":
+            # BitFit (Zaken et al., 2022): Fine-tune only bias parameters across the entire network
+            for name, param in model.named_parameters():
+                if "bias" in name or "log_var" in name:
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
+        else:
+            # Default Head-Tuning PEFT: Freeze backbone, fine-tune heads
+            for param in model.backbone.parameters():
+                param.requires_grad = False
 
         trainable_params = [p for p in model.parameters() if p.requires_grad]
         optimizer = optim.AdamW(trainable_params, lr=lr, weight_decay=1e-3)
+        loss_fn = KendallMultiTaskLoss(
+            model.log_var_clf, model.log_var_w, model.log_var_l, model.log_var_d
+        )
 
         train_idx = fold_info['train_indices']
         test_idx = fold_info['test_indices']
@@ -83,12 +95,20 @@ def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4):
             reg_targets_norm = reg_targets
         y_reg_train = torch.tensor(reg_targets_norm, dtype=torch.float32).to(device)
 
-        # Fine-tune on 18 samples
+        # Apply physics augmentations on 18 samples to combat low-sample overfitting
+        if use_aug:
+            X_train_batch, y_shape_batch, y_reg_batch = apply_physics_augmentations(
+                X_train, y_shape_train, y_reg_train, noise_std=0.015, dc_shift_std=0.02
+            )
+        else:
+            X_train_batch, y_shape_batch, y_reg_batch = X_train, y_shape_train, y_reg_train
+
+        # Fine-tune
         model.train()
         for _ in range(epochs):
             optimizer.zero_grad()
-            clf_out, reg_out = model(X_train)
-            loss = criterion_clf(clf_out, y_shape_train) + criterion_reg(reg_out, y_reg_train)
+            clf_out, reg_out = model(X_train_batch)
+            loss = loss_fn(clf_out, y_shape_batch, reg_out, y_reg_batch)
             loss.backward()
             optimizer.step()
 
@@ -107,7 +127,7 @@ def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4):
 
             results.append({
                 'fold': fold_id,
-                'method': 'FewShot_PEFT',
+                'method': method_name,
                 'filename': meta['filename'],
                 'crack_no': meta['crack_no'],
                 'true_shape': meta['true_shape'],
@@ -127,13 +147,14 @@ def evaluate_few_shot_peft(model_dir=None, output_dir=None, epochs=50, lr=2e-4):
     df_preds = pd.DataFrame(results)
     df_summary = compute_pooled_oof_summary(df_preds)
 
-    pred_csv = os.path.join(output_dir, "few_shot_peft_predictions.csv")
-    summary_csv = os.path.join(output_dir, "few_shot_peft_summary.csv")
+    prefix = "few_shot_bitfit" if peft_type == "bitfit" else "few_shot_peft"
+    pred_csv = os.path.join(output_dir, f"{prefix}_predictions.csv")
+    summary_csv = os.path.join(output_dir, f"{prefix}_summary.csv")
     df_preds.to_csv(pred_csv, index=False)
     df_summary.to_csv(summary_csv, index=False)
 
     print("\n" + "=" * 80)
-    print("DIRECTION 2: FEW-SHOT PEFT SUMMARY (10-FOLD LODO)")
+    print(f"DIRECTION 2: {method_name.upper()} SUMMARY (10-FOLD LODO)")
     print("=" * 80)
     print(df_summary.to_string(index=False))
     print("=" * 80)
@@ -146,5 +167,14 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory")
     parser.add_argument("--epochs", type=int, default=50, help="Number of fine-tuning epochs per fold")
     parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
+    parser.add_argument("--peft-type", type=str, default="head", choices=["head", "bitfit"], help="PEFT type: head or bitfit")
+    parser.add_argument("--no-aug", action="store_true", help="Disable physics augmentations")
     args = parser.parse_args()
-    evaluate_few_shot_peft(args.model_dir, args.output_dir, epochs=args.epochs, lr=args.lr)
+    evaluate_few_shot_peft(
+        args.model_dir,
+        args.output_dir,
+        epochs=args.epochs,
+        lr=args.lr,
+        peft_type=args.peft_type,
+        use_aug=not args.no_aug,
+    )
