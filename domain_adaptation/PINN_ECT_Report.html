@@ -474,13 +474,13 @@
       <td><strong>0.3485 – 0.473 mm</strong></td>
     </tr>
     <tr>
-      <td rowspan="3"><strong>2. Multitask MLP PINN</strong><br><em>Phẳng hóa thành vector 1D</em></td>
-      <td rowspan="3"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
+      <td rowspan="4"><strong>2. Multitask MLP PINN</strong><br><em>Phẳng hóa thành vector 1D</em></td>
+      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
       <td>Source Zero-Shot</td>
       <td>12.5%</td>
       <td>4.5016 mm</td>
       <td>9.8264 mm</td>
-      <td rowspan="3"><strong>Sụp đổ biểu diễn:</strong> Phẳng hóa 2D thành 1D ($1089$ px) phá hủy toàn bộ tô-pô lân cận. Acc chỉ ngang đoán mò ($1/5=20\%$), sai số $L$ vọt lên $8.7\text{ mm}$!</td>
+      <td rowspan="4"><strong>Sụp đổ biểu diễn:</strong> Phẳng hóa 2D thành 1D ($1089$ px) phá hủy toàn bộ tô-pô lân cận. Ngay cả với PI-LGL, Acc trần chỉ đạt ~30.8% và sai số $L$ lên tới $6.11\text{ mm}$ (kém xa mức 0.35 mm của CNN).</td>
     </tr>
     <tr>
       <td>FewShot PEFT</td>
@@ -494,14 +494,20 @@
       <td>4.1156 mm</td>
       <td>8.9773 mm</td>
     </tr>
+    <tr class="highlight-pinn">
+      <td><strong>PI-LGL (Thực nghiệm mới)</strong></td>
+      <td><strong>30.8%</strong> (Trần 50.0%)</td>
+      <td><strong>2.9502 mm</strong></td>
+      <td><strong>6.1098 mm</strong></td>
+    </tr>
     <tr>
-      <td rowspan="3"><strong>3. Xiong et al. MLP PINN</strong><br><em>Mô hình kinh điển tham chiếu</em></td>
-      <td rowspan="3"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
+      <td rowspan="4"><strong>3. Xiong et al. MLP PINN</strong><br><em>Mô hình kinh điển tham chiếu</em></td>
+      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
       <td>Source Zero-Shot</td>
       <td>17.5%</td>
       <td>619.90 mm</td>
       <td>1542.07 mm</td>
-      <td rowspan="3"><strong>Phân kỳ hồi quy:</strong> Thiếu tầng chuẩn hóa không gian cục bộ và cơ chế cân bằng bất định, sai số hồi quy kích thước phân kỳ hoàn toàn trên dữ liệu thực tế.</td>
+      <td rowspan="4"><strong>Phân kỳ hồi quy:</strong> Thiếu tầng chuẩn hóa không gian cục bộ và cơ chế cân bằng bất định, sai số hồi quy kích thước phân kỳ hoàn toàn trên dữ liệu thực tế (> 600 mm).</td>
     </tr>
     <tr>
       <td>FewShot PEFT</td>
@@ -514,6 +520,12 @@
       <td>12.9%</td>
       <td>618.28 mm</td>
       <td>1538.60 mm</td>
+    </tr>
+    <tr class="highlight-pinn">
+      <td><strong>PI-LGL (Thực nghiệm mới)</strong></td>
+      <td><strong>30.8%</strong> (Trần 30.0%)</td>
+      <td><strong>621.76 mm</strong></td>
+      <td><strong>1546.68 mm</strong></td>
     </tr>
   </tbody>
 </table>
