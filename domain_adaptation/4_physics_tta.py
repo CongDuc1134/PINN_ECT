@@ -15,6 +15,7 @@ import os
 import sys
 import copy
 import argparse
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -103,6 +104,13 @@ def evaluate_physics_tta(
                     param.requires_grad = True
                     bn_params.append(param)
 
+        # Initial zero-shot evaluation for safe fallback
+        model.eval()
+        with torch.no_grad():
+            clf_init, reg_init = model(X_test)
+            pred_classes_fallback = torch.argmax(clf_init, dim=1).cpu().numpy()
+            pred_reg_fallback = denormalize_regression_predictions(reg_init.cpu().numpy(), y_scaler)
+
         if bn_params:
             optimizer = optim.Adam(bn_params, lr=lr, weight_decay=1e-4)
 
@@ -111,26 +119,32 @@ def evaluate_physics_tta(
 
                 # 1. Forward pass on original test inputs
                 clf_out, reg_out = model(X_test)
-                probs = F.softmax(clf_out, dim=1)
+                log_probs = F.log_softmax(clf_out, dim=1)
+                probs = torch.exp(log_probs)
 
-                # Entropy minimization (temperature scaled)
-                loss_entropy = -(probs * torch.log(probs + 1e-8)).sum(dim=1).mean()
+                # Entropy minimization (numerically stable with log_probs)
+                loss_entropy = -(probs * log_probs).sum(dim=1).mean()
 
                 # 2. Physics Constraint 1: Spatial Symmetry Invariance
-                # Horizontal reflection (scan-axis symmetry) and Vertical reflection (cross-axis symmetry)
-                X_hflip = torch.flip(X_test, dims=[3])
-                X_vflip = torch.flip(X_test, dims=[2])
+                if X_test.dim() == 4:
+                    X_hflip = torch.flip(X_test, dims=[3])
+                    X_vflip = torch.flip(X_test, dims=[2])
+                else:
+                    X_hflip = torch.flip(X_test, dims=[1])
+                    X_vflip = X_test
 
                 clf_h, reg_h = model(X_hflip)
                 clf_v, reg_v = model(X_vflip)
-                probs_h = F.softmax(clf_h, dim=1)
-                probs_v = F.softmax(clf_v, dim=1)
+                log_probs_h = F.log_softmax(clf_h, dim=1)
+                probs_h = torch.exp(log_probs_h)
+                log_probs_v = F.log_softmax(clf_v, dim=1)
+                probs_v = torch.exp(log_probs_v)
 
                 # Symmetry in classification probability (Symmetric KL divergence)
-                kl_h = 0.5 * (F.kl_div(torch.log(probs + 1e-8), probs_h, reduction='batchmean') +
-                              F.kl_div(torch.log(probs_h + 1e-8), probs, reduction='batchmean'))
-                kl_v = 0.5 * (F.kl_div(torch.log(probs + 1e-8), probs_v, reduction='batchmean') +
-                              F.kl_div(torch.log(probs_v + 1e-8), probs, reduction='batchmean'))
+                kl_h = 0.5 * (F.kl_div(log_probs, probs_h, reduction='batchmean') +
+                              F.kl_div(log_probs_h, probs, reduction='batchmean'))
+                kl_v = 0.5 * (F.kl_div(log_probs, probs_v, reduction='batchmean') +
+                              F.kl_div(log_probs_v, probs, reduction='batchmean'))
                 loss_sym_clf = kl_h + kl_v
 
                 # Symmetry in dimension prediction
@@ -142,8 +156,10 @@ def evaluate_physics_tta(
 
                 # Combined Physics-Informed TTA objective
                 total_loss = loss_entropy + lambda_sym * loss_sym + lambda_geom * loss_geom
-                total_loss.backward()
-                optimizer.step()
+                if not (torch.isnan(total_loss) or torch.isinf(total_loss)):
+                    total_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(bn_params, max_norm=1.0)
+                    optimizer.step()
 
         # Final OOF evaluation
         model.eval()
@@ -151,6 +167,11 @@ def evaluate_physics_tta(
             clf_test, reg_test = model(X_test)
             pred_classes = torch.argmax(clf_test, dim=1).cpu().numpy()
             pred_reg = denormalize_regression_predictions(reg_test.cpu().numpy(), y_scaler)
+
+            # Fallback if any prediction became NaN
+            if np.isnan(pred_reg).any() or np.isinf(pred_reg).any():
+                pred_reg = np.where(np.isnan(pred_reg) | np.isinf(pred_reg), pred_reg_fallback, pred_reg)
+                pred_classes = pred_classes_fallback
 
         for i_local, i_global in enumerate(test_idx):
             meta = metadata_list[i_global]

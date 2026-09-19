@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+Domain_Transfer_MMD,20,20.0,"[5.0, 40.0]",20.0,10.7,"[2.4, 21.1]",-0.016,0.2836,11.3385,5.2029,70.9,113.4,260.1,148.1,5.6084,5.6982,-7.615,-42.17

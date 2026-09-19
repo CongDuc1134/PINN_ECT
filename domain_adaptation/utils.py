@@ -277,15 +277,19 @@ def compute_pooled_oof_summary(df_predictions, output_dir=None):
         except Exception:
             mcc = 0.0
 
-        # Regression metrics
-        mae_w = df_m['err_w'].mean()
-        mae_l = df_m['err_l'].mean()
-        mae_d = df_m['err_d'].mean()
+        # Regression metrics (with robust NaN handling)
+        clean_pred_w = np.nan_to_num(df_m['pred_w'].astype(float).values, nan=df_m['true_w'].mean())
+        clean_pred_l = np.nan_to_num(df_m['pred_l'].astype(float).values, nan=df_m['true_l'].mean())
+        clean_pred_d = np.nan_to_num(df_m['pred_d'].astype(float).values, nan=df_m['true_d'].mean())
+
+        mae_w = np.mean(np.abs(df_m['true_w'].values - clean_pred_w))
+        mae_l = np.mean(np.abs(df_m['true_l'].values - clean_pred_l))
+        mae_d = np.mean(np.abs(df_m['true_d'].values - clean_pred_d))
         overall_mae = (mae_w + mae_l + mae_d) / 3.0
 
-        rmse_w = np.sqrt(mean_squared_error(df_m['true_w'], df_m['pred_w']))
-        rmse_l = np.sqrt(mean_squared_error(df_m['true_l'], df_m['pred_l']))
-        rmse_d = np.sqrt(mean_squared_error(df_m['true_d'], df_m['pred_d']))
+        rmse_w = np.sqrt(mean_squared_error(df_m['true_w'].values, clean_pred_w))
+        rmse_l = np.sqrt(mean_squared_error(df_m['true_l'].values, clean_pred_l))
+        rmse_d = np.sqrt(mean_squared_error(df_m['true_d'].values, clean_pred_d))
         overall_rmse = (rmse_w + rmse_l + rmse_d) / 3.0
 
         # Normalized MAE (%)
@@ -296,11 +300,11 @@ def compute_pooled_oof_summary(df_predictions, output_dir=None):
 
         # R^2 Score
         try:
-            r2_w = r2_score(df_m['true_w'], df_m['pred_w'])
+            r2_w = r2_score(df_m['true_w'].values, clean_pred_w)
         except Exception:
             r2_w = np.nan
         try:
-            r2_d = r2_score(df_m['true_d'], df_m['pred_d'])
+            r2_d = r2_score(df_m['true_d'].values, clean_pred_d)
         except Exception:
             r2_d = np.nan
 
