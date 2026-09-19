@@ -261,11 +261,12 @@
 </div>
 
 <!-- SECTION 2: COMPREHENSIVE METHOD EVOLUTION SYNTHESIS -->
-<h2 class="section-title">2. Bảng Tổng Hợp Tiến Hóa 10 Phương Pháp Thích Ứng Miền Đã Triển Khai</h2>
+<h2 class="section-title">2. Bảng Tổng Hợp Tiến Hóa Toàn Diện Các Phương Pháp Đã Triển Khai</h2>
 <p>
-  Quá trình nghiên cứu bài toán Sim-to-Real Domain Adaptation cho tín hiệu ECT 5 kHz đã trải qua 5 giai đoạn chính với 10 phương pháp kỹ thuật được triển khai thực nghiệm có kiểm soát:
+  Quá trình nghiên cứu bài toán Sim-to-Real Domain Adaptation cho tín hiệu ECT 5 kHz đã trải qua 5 giai đoạn chính với đầy đủ các nhánh thử nghiệm độc lập trong hệ thống (lưu tại thư mục <code>domain_adaptation/results/</code>):
 </p>
 
+<h3 class="sub-title">2.1 Tiến Trình 10 Phương Pháp Thích Ứng Cốt Lõi</h3>
 <table class="styled-table">
   <thead>
     <tr>
@@ -357,6 +358,72 @@
       <td><strong>0.410 mm</strong></td>
       <td><strong>0.472 mm</strong></td>
       <td><strong>ĐỘT PHÁ TOÀN DIỆN:</strong> Đạt 90%–100% Acc và <strong>giảm 60% sai số chiều dài $L$</strong> so với NoPINN (0.47 mm vs 1.22 mm)!</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 class="sub-title">2.2 Chi Tiết Các Nhánh Thử Nghiệm Chuyên Biệt (Ablation Folders)</h3>
+<p>
+  Nhằm tìm ra cấu hình thích ứng tối ưu, nhiều nhánh kỹ thuật chuyên biệt đã được thử nghiệm độc lập:
+</p>
+
+<table class="styled-table">
+  <thead>
+    <tr>
+      <th>Thư Mục Kết Quả</th>
+      <th>Phương Pháp Thử Nghiệm</th>
+      <th>Acc (%)</th>
+      <th>MAE Tổng (mm)</th>
+      <th>MAE Chiều Dài $L$ (mm)</th>
+      <th>Kết Quả & Phân Tích Kỹ Thuật</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>exp_calibration/</code></td>
+      <td>Calibrated PEFT (Chỉ lọc tín hiệu + khóa xương sống)</td>
+      <td>25.0%</td>
+      <td>0.7391 mm</td>
+      <td>0.9905 mm</td>
+      <td>Lọc đường nền rất tốt nhưng vẫn bị kẹt ở mức 25% do xương sống bị đóng băng.</td>
+    </tr>
+    <tr>
+      <td><code>exp_dann_uda/</code></td>
+      <td>DANN Adversarial UDA (Mạng đối nghịch Domain Classifier)</td>
+      <td>30.0%</td>
+      <td>0.8786 mm</td>
+      <td>1.5435 mm</td>
+      <td>Mạng đối nghịch không ổn định trên tập dữ liệu nhỏ ($N=18$), bộ phân biệt miền dễ quá khớp.</td>
+    </tr>
+    <tr>
+      <td><code>exp_lora/</code></td>
+      <td>PI-LoRA Conv (Chỉ tiêm LoRA, chưa lọc đường nền)</td>
+      <td>45.0%</td>
+      <td>0.5377 mm</td>
+      <td>0.5242 mm</td>
+      <td>LoRA giải phóng xương sống thành công, tăng Acc từ 25% lên 45% và hạ sâu MAE.</td>
+    </tr>
+    <tr>
+      <td><code>exp_pi_advanced/</code></td>
+      <td>PI-Advanced (Tích hợp tổn thất biên dạng vi sai)</td>
+      <td>35.0%</td>
+      <td>0.5088 mm</td>
+      <td><strong>0.4274 mm</strong></td>
+      <td>Ước lượng chiều dài cực kỳ chuẩn xác (0.42 mm) nhưng phân loại cần thêm căn chỉnh biên.</td>
+    </tr>
+    <tr class="highlight-pinn">
+      <td><code>exp_hybrid_pilor/</code></td>
+      <td>Calibrated PI-LoRA (Ghép Hiệu Chuẩn Tín Hiệu + LoRA Conv)</td>
+      <td><strong>60.0% – 70.0%</strong></td>
+      <td><strong>0.4604 – 0.581 mm</strong></td>
+      <td><strong>0.3886 – 0.524 mm</strong></td>
+      <td><strong>Sự kết hợp hoàn hảo:</strong> Đạt bước nhảy vọt kép trên cả 10 fold kiểm thử!</td>
+    </tr>
+    <tr>
+      <td><code>cnn/</code> vs <code>mlp/</code></td>
+      <td>Khảo sát 43 Checkpoints (CNN vs MLP đa tầng)</td>
+      <td colspan="3">CNN: Acc 29% &rarr; 60% &rarr; 90% | MLP: Acc trần chỉ ~35%</td>
+      <td>Mạng tích chập CNN giữ trọn cấu trúc topo 2D của dòng xoáy, vượt trội hoàn toàn MLP phẳng hóa.</td>
     </tr>
   </tbody>
 </table>
