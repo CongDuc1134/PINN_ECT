@@ -30,8 +30,8 @@ Trước vòng lặp thử nghiệm này, toàn bộ 43 mô hình tiền huấn 
 
 ## 2. NGUYÊN NHÂN SÂU XA: VÌ SAO NOPINN TỪNG THẮNG TRONG PEFT CŨ?
 
-1. **"Rigid Backbone Paradox" (Nghịch lý xương sống bị đông cứng)**:
-   - Các tầng Conv của PINN khớp chặt chẽ với nghiệm giải tích PDE trong mô phỏng FEM lý tưởng.
+1. **"Rigid Backbone Paradox" (Nghịch lý xương sống bị đông cứng khi đóng băng toàn bộ backbone)**:
+   - Các tầng Conv của PINN khớp chặt chẽ với mô hình trường từ giải tích (Analytical Forward Magnetic Field $\mathbf{H}$) trong mô phỏng lý tưởng.
    - Khi đóng băng 100% Backbone (`requires_grad = False`), mạng PINN không có khả năng hấp thụ các sai số mức cảm biến thực tế (lệch góc pha, trôi dạt DC, thay đổi độ nâng lift-off).
    - Ngược lại, Baseline NoPINN có không gian đặc trưng lỏng lẻo (pliable feature manifold), cho phép các tầng Linear phân loại dễ dàng uốn nắn theo 18 mẫu thực nghiệm.
 2. **"Physics Evacuation Trap" (Bẫy loại bỏ định luật vật lý khi finetune)**:
@@ -51,7 +51,7 @@ Toàn bộ các module mới đều được viết độc lập tại `domain_a
    - Tái tính toán kênh Gradient không gian $\nabla H$ sạch.
 2. **`domain_adaptation/methods/lora_conv.py`**:
    - Thư viện LoRA cho Conv2d: $W = W_0 + \frac{\alpha}{r} (B \cdot A)$.
-   - Giữ nguyên nghiệm PDE $W_0$, chỉ thích nghi ma trận hạng thấp $A, B$.
+   - Giữ nguyên trọng số tiền huấn luyện $W_0$, chỉ thích nghi ma trận hạng thấp $A, B$.
 3. **`domain_adaptation/methods/run_lora_adaptation.py`**:
    - Huấn luyện LoRA tích hợp hàm mất mát thể tích điện từ Faraday $\mathcal{L}_{\text{vol}}$.
 4. **`domain_adaptation/methods/dann_uda.py`**:
@@ -123,7 +123,7 @@ Toàn bộ đồ thị được xuất bản tại thư mục `domain_adaptation
 1. **Khám phá và chứng minh "Nghịch lý Backbone đông cứng" (Rigid Backbone Paradox)**:
    - Bài báo đầu tiên chỉ ra rằng việc đóng băng toàn bộ xương sống khi thích ứng Sim-to-Real làm triệt tiêu lợi thế của PINN trong bài toán NDT.
 2. **Đề xuất giải pháp Low-Rank Physics-Informed Adaptation (PI-LoRA)**:
-   - Kết hợp bảo tồn nghiệm PDE trong $W_0$ và nới lỏng không gian con hạng thấp cho nhiễu phần cứng.
+   - Kết hợp bảo tồn tri thức từ trường tiền huấn luyện trong $W_0$ và nới lỏng không gian con hạng thấp cho nhiễu phần cứng.
 3. **Đưa PINN từ trạng thái yếu thế (30%) vươn lên dẫn đầu (60%–80%) và vượt trội hoàn toàn so với Baseline NoPINN**.
 
 ---
@@ -133,7 +133,7 @@ Toàn bộ đồ thị được xuất bản tại thư mục `domain_adaptation
 Dựa trên phân tích 20 mẫu thực nghiệm 5kHz, ta phát hiện hiện tượng then chốt:
 - Trong 10-Fold LODO, Vết nứt No9 (Step_R) và No10 (Step_T) chỉ có 2 mẫu mỗi loại. Khi kiểm thử Fold 9 hoặc Fold 10, tập huấn luyện (18 mẫu) hoàn toàn **KHÔNG CÓ** mẫu nào của lớp đó.
 - Việc finetune đầu phân loại (Linear Head) tự do bằng hàm mất mát Cross-Entropy chuẩn sẽ phá hủy các trọng số tiền huấn luyện của lớp vắng mặt (*Catastrophic Forgetting* / Hiện tượng lãng quên lớp hiếm), khiến Fold 9 và 10 luôn bị đoán sai thành Rectangular (mất ngay 20% Accuracy, trần tối đa chỉ còn 80%).
-- Mạng PINN sở hữu không gian nghiệm vật lý Maxwell cho cả 5 lớp hình học. Nếu ta bảo toàn tri thức vật lý này khi thích ứng, PINN sẽ bứt phá mạnh mẽ lên 70% – 90%!
+- Mạng PINN sở hữu không gian đặc trưng từ trường thuận giải tích cho cả 5 lớp hình học. Nếu ta bảo toàn tri thức vật lý này khi thích ứng, PINN sẽ bứt phá mạnh mẽ lên 70% – 90%!
 
 ### Danh mục 5 Hướng Kỹ Thuật Đề Xuất Sẽ Triển Khai và Đánh Giá:
 
@@ -152,7 +152,7 @@ Dựa trên phân tích 20 mẫu thực nghiệm 5kHz, ta phát hiện hiện t�
    - Mục đích: Mở rộng 18 mẫu thực tế thành 180 mẫu ảo có phân bố chuẩn vật lý, chống quá khớp triệt để cho các tầng LoRA.
 
 4. **Hướng 4: Deep Ensemble of Physics Multi-Checkpoints (Tổ hợp đa mô hình PINN)**
-   - Cơ chế: Gom xác suất mềm (soft voting) từ tổ hợp các mô hình PINN huấn luyện từ các hạt giống độc lập (Seed 42, 123, 456, 789) hoặc các mức trọng số PDE ($\alpha=10, 100, 1000$).
+   - Cơ chế: Gom xác suất mềm (soft voting) từ tổ hợp các mô hình PINN huấn luyện từ các hạt giống độc lập (Seed 42, 123, 456, 789) hoặc các mức trọng số hàm vật lý ($\alpha=10, 100, 1000$).
    - Mục đích: Triệt tiêu phương sai dự đoán (variance reduction) của từng mô hình đơn lẻ.
 
 5. **Hướng 5: Hybrid PI-MMD-LoRA (Căn chỉnh miền tiềm ẩn đa nhân RBF kết hợp LoRA)**
