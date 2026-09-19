@@ -260,8 +260,111 @@
   </ul>
 </div>
 
-<!-- SECTION 2 -->
-<h2 class="section-title">2. Đặc Tả Dữ Liệu & Bản Chất Của 2 Giao Thức Đánh Giá</h2>
+<!-- SECTION 2: COMPREHENSIVE METHOD EVOLUTION SYNTHESIS -->
+<h2 class="section-title">2. Bảng Tổng Hợp Tiến Hóa 10 Phương Pháp Thích Ứng Miền Đã Triển Khai</h2>
+<p>
+  Quá trình nghiên cứu bài toán Sim-to-Real Domain Adaptation cho tín hiệu ECT 5 kHz đã trải qua 5 giai đoạn chính với 10 phương pháp kỹ thuật được triển khai thực nghiệm có kiểm soát:
+</p>
+
+<table class="styled-table">
+  <thead>
+    <tr>
+      <th>Phương Pháp / Kỹ Thuật</th>
+      <th>Cơ Chế Thích Ứng</th>
+      <th>Accuracy (%)</th>
+      <th>MAE Tổng (mm)</th>
+      <th>MAE Chiều Dài $L$ (mm)</th>
+      <th>Đánh Giá & Phát Hiện Cốt Lõi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Real-Only Scratch</strong></td>
+      <td>Train từ đầu trên 18 mẫu thực tế</td>
+      <td>42.7%</td>
+      <td>1.375 mm</td>
+      <td>~1.40 mm</td>
+      <td>Dữ liệu quá ít ($N=18$), mạng bị thiếu khớp nặng (Underfitting).</td>
+    </tr>
+    <tr>
+      <td><strong>2. Zero-Shot Direct</strong></td>
+      <td>Chuyển giao thẳng không finetune</td>
+      <td>17.0%</td>
+      <td>174.8 mm</td>
+      <td>~180 mm</td>
+      <td>Sụp đổ do lệch điện áp không tải và rung chấn đầu dò.</td>
+    </tr>
+    <tr>
+      <td><strong>3. Old Few-Shot PEFT</strong></td>
+      <td>Đóng băng backbone, chỉ train head</td>
+      <td>29.0% (PINN)<br>58.1% (Base)</td>
+      <td>174.0 mm (PINN)<br>0.553 mm (Base)</td>
+      <td>~180 mm</td>
+      <td><strong>Nghịch lý Backbone đông cứng:</strong> Xương sống PINN bị khóa cứng không thích ứng được nhiễu phần cứng.</td>
+    </tr>
+    <tr>
+      <td><strong>4. Physics-Informed MMD</strong></td>
+      <td>Căn chỉnh miền tiềm ẩn đa nhân RBF</td>
+      <td>40.0%</td>
+      <td>0.469 mm</td>
+      <td>0.780 mm</td>
+      <td>Hồi phục từ 29% lên 40%, giảm mạnh sai số hình học.</td>
+    </tr>
+    <tr class="highlight-pinn">
+      <td><strong>5. Calibrated PI-LoRA</strong></td>
+      <td>Hiệu chuẩn tín hiệu + LoRA ($r=4$)</td>
+      <td><strong>60.0%</strong> (PINN)<br>55.0% (Base)</td>
+      <td><strong>0.581 mm</strong> (PINN)<br>0.647 mm (Base)</td>
+      <td><strong>0.524 mm</strong> (PINN)<br>0.771 mm (Base)</td>
+      <td><strong>ĐỘT PHÁ LẦN 1 (Phôi lạ LODO):</strong> PINN chính thức vượt qua NoPINN trên cả 2 tiêu chí Acc (+5%) và MAE (-10%)!</td>
+    </tr>
+    <tr>
+      <td><strong>6. Anchored LoRA (Trial 10)</strong></td>
+      <td>Neo trọng số đầu phân loại $\mathcal{L}_{\text{anchor}}$</td>
+      <td>60.0% – 70.0%</td>
+      <td>0.520 mm</td>
+      <td>0.510 mm</td>
+      <td>Bảo tồn góc chiếu của các lớp hiếm (`Step_R`, `Step_T`).</td>
+    </tr>
+    <tr>
+      <td><strong>7. PI-NPC (Trial 11)</strong></td>
+      <td>Phân loại bằng Prototype vật lý</td>
+      <td>65.0%</td>
+      <td>0.490 mm</td>
+      <td>0.495 mm</td>
+      <td>Khoảng cách Cosine trên không gian tiềm ẩn LoRA.</td>
+    </tr>
+    <tr>
+      <td><strong>8. Finetune BỎ Vật Lý</strong></td>
+      <td>Thuần dữ liệu CE + MSE, mở full mạng</td>
+      <td>70.0%</td>
+      <td>0.732 mm</td>
+      <td><strong>1.148 mm</strong></td>
+      <td><strong>Catastrophic Forgetting:</strong> Quên sạch vật lý, sai số kích thước nổ tung lên 1.15 mm!</td>
+    </tr>
+    <tr class="highlight-pinn">
+      <td><strong>9. Finetune CÓ Vật Lý</strong></td>
+      <td>Thêm bảo toàn thể tích $\mathcal{L}_{\text{vol}}$</td>
+      <td><strong>80.0%</strong></td>
+      <td><strong>0.469 mm</strong></td>
+      <td><strong>0.603 mm</strong></td>
+      <td><strong>Tăng ngay +10% Acc</strong>, chứng minh vật lý là bắt buộc khi finetune.</td>
+    </tr>
+    <tr class="highlight-pinn">
+      <td><strong>10. PI-LGL (Trial 13 - Mới nhất)</strong></td>
+      <td>LoRA + Thể tích + Độ cong $\nabla^2 H$</td>
+      <td><strong>90.0% – 100%</strong></td>
+      <td><strong>0.410 mm</strong></td>
+      <td><strong>0.472 mm</strong></td>
+      <td><strong>ĐỘT PHÁ TOÀN DIỆN:</strong> Đạt 90%–100% Acc và <strong>giảm 60% sai số chiều dài $L$</strong> so với NoPINN (0.47 mm vs 1.22 mm)!</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<!-- SECTION 3 -->
+<h2 class="section-title">3. Đặc Tả Dữ Liệu & Bản Chất Của 2 Giao Thức Đánh Giá</h2>
 <p>
   Tập dữ liệu thực nghiệm gồm 20 mẫu quét 5 kHz thu thập từ 10 phôi hợp kim nhôm chuẩn NDT (No.1 đến No.10), chia đều thành 5 lớp hình học: Rectangular, Triangular, Ellipse, Step_R và Step_T. Mỗi phôi được quét 2 lần độc lập.
 </p>
@@ -310,8 +413,8 @@
 
 <div class="page-break"></div>
 
-<!-- SECTION 3 -->
-<h2 class="section-title">3. Giải Mã Hiện Tượng "Học Vẹt" Của NoPINN Bằng 3 Bằng Chứng Khoa Học</h2>
+<!-- SECTION 4 -->
+<h2 class="section-title">4. Giải Mã Hiện Tượng "Học Vẹt" Của NoPINN Bằng 3 Bằng Chứng Khoa Học</h2>
 <p>
   Hiện tượng NoPINN đạt 100% phân loại ở Giao thức 1 được giải thích chuẩn xác qua 3 bằng chứng thực nghiệm:
 </p>
@@ -331,8 +434,8 @@
   NoPINN chỉ tối ưu hàm mất mát dữ liệu nên dễ rơi vào các cực tiểu giả. PINN bị ràng buộc bởi phương trình vi phân thế từ dipole vi sai, ép các bộ lọc tích chập (Conv kernels) phải học trường thế trơn nhẵn, ngăn chặn triệt để hiện tượng học vẹt nhiễu nền.
 </div>
 
-<!-- SECTION 4 -->
-<h2 class="section-title">4. Thí Nghiệm Đối Chứng: Finetune Có Vật Lý vs Không Có Vật Lý (Ablation Study)</h2>
+<!-- SECTION 5 -->
+<h2 class="section-title">5. Thí Nghiệm Đối Chứng: Finetune Có Vật Lý vs Không Có Vật Lý (Ablation Study)</h2>
 <p>
   Nhằm kiểm tra tác động trực tiếp của hàm mất mát vật lý trong giai đoạn finetune, chúng tôi thực hiện thử nghiệm đối chứng có kiểm soát trên cùng checkpoint PINN Base Seed 789:
 </p>
@@ -394,8 +497,8 @@
 
 <div class="page-break"></div>
 
-<!-- SECTION 5 -->
-<h2 class="section-title">5. Đột Phá Phương Pháp PI-LGL & Bảng Master Benchmark (11 Checkpoints)</h2>
+<!-- SECTION 6 -->
+<h2 class="section-title">6. Đột Phá Phương Pháp PI-LGL & Bảng Master Benchmark (11 Checkpoints)</h2>
 <p>
   Phương pháp <strong>PI-LGL (Physics-Informed Laplacian Guarded LoRA)</strong> tích hợp điều kiện biên độ cong Laplace của tín hiệu vi sai:
   Vết nứt cong Ellipse có đạo hàm bậc hai không gian cực đại dưới 0.07 V/mm², trong khi vết nứt bậc (Step) có bước nhảy gián đoạn vọt lên trên 0.18 V/mm². Bằng cách thiết lập ngưỡng vật lý 0.10 V/mm², mạng loại bỏ 100% nhầm lẫn hình học.
@@ -507,8 +610,8 @@
   </tbody>
 </table>
 
-<!-- SECTION 6: FIGURES -->
-<h2 class="section-title">6. Bộ Đồ Thị Minh Chứng Chuẩn Xuất Bản IEEE Transactions (300 DPI)</h2>
+<!-- SECTION 7: FIGURES -->
+<h2 class="section-title">7. Bộ Đồ Thị Minh Chứng Chuẩn Xuất Bản IEEE Transactions (300 DPI)</h2>
 
 <div class="grid-2col">
   <div class="figure-card">
@@ -558,8 +661,8 @@
   </div>
 </div>
 
-<!-- SECTION 7 -->
-<h2 class="section-title">7. Đóng Góp Học Thuật & Đề Xuất Viết Bài Báo Q1</h2>
+<!-- SECTION 8 -->
+<h2 class="section-title">8. Đóng Góp Học Thuật & Đề Xuất Viết Bài Báo Q1</h2>
 <p>
   Nghiên cứu này cung cấp đầy đủ luận cứ và số liệu vững chắc để bảo vệ bài báo tại các tạp chí Q1 (như <em>IEEE Transactions on Industrial Informatics</em> hoặc <em>NDT&E International</em>):
 </p>
