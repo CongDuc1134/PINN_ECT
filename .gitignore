@@ -34,6 +34,26 @@ experiments_run.log
 *.tmp
 tmp/
 .temp/
+scratch/check_*.py
+scratch/copy_*.py
+scratch/find_*.py
+scratch/inspect_*.py
+scratch/test_*.py
+scratch/update_*.py
+scratch/verify_*.py
+scratch/dump_*.py
+scratch/search_*.py
+scratch/insert_*.py
+scratch/analyze_laplacian.py
+scratch/compare_*.py
+scratch/generate_detailed_*.py
+scratch/generate_pdf_report.py
+scratch/generate_table_rows.py
+scratch/plot_*.py
+scratch/run_all_remaining_models.py
+scratch/summarize_*.py
+scratch/view_*.py
+scratch/*.txt
 
 # ==============================================================================
 # 5. OS & IDE Configuration

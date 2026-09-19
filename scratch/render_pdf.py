@@ -34,7 +34,7 @@ def main():
         content = f.read()
 
     # Replacements Architecture Comparison plots (CNN vs Multitask MLP vs Xiong MLP)
-    content = content.replace("{{B64_ARCH_F1}}", img_to_b64(os.path.join(p_arch, "fig1_cross_method_architecture_comparison.png")))
+    content = content.replace("{{B64_ARCH_F1}}", img_to_b64(os.path.join(p_arch, "fig_unified_master_dashboard.png")))
     content = content.replace("{{B64_ARCH_F2}}", img_to_b64(os.path.join(p_arch, "fig2_data_scaling_comparison_cnn_vs_mlp.png")))
     content = content.replace("{{B64_ARCH_F3}}", img_to_b64(os.path.join(p_arch, "fig3_spatial_dimension_breakdown_architectures.png")))
     content = content.replace("{{B64_ARCH_F4}}", img_to_b64(os.path.join(p_arch, "fig4_pi_lgl_master_architecture_benchmark.png")))
@@ -57,6 +57,17 @@ def main():
     content = content.replace("{{B64_F2_NEW}}", img_to_b64(os.path.join(p_new, "fig2_dimension_breakdown_mae.png")))
     content = content.replace("{{B64_F3_NEW}}", img_to_b64(os.path.join(p_new, "fig3_ablation_progression.png")))
     content = content.replace("{{B64_F4_NEW}}", img_to_b64(os.path.join(p_new, "fig4_confusion_matrix_best_lora.png")))
+
+    # Replacements Comprehensive Comparison plots (Section 8 - CNN vs MLP全面对比)
+    p_comp = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", "plots_final_comprehensive")
+    content = content.replace("{{B64_COMP_F1}}", img_to_b64(os.path.join(p_comp, "fig1_grand_method_comparison.png")))
+    content = content.replace("{{B64_COMP_F2}}", img_to_b64(os.path.join(p_comp, "fig2_cnn_method_evolution.png")))
+    content = content.replace("{{B64_COMP_F3}}", img_to_b64(os.path.join(p_comp, "fig3_architecture_wld_breakdown.png")))
+    content = content.replace("{{B64_COMP_F4}}", img_to_b64(os.path.join(p_comp, "fig4_pilgl_architecture_comparison.png")))
+    content = content.replace("{{B64_COMP_F5}}", img_to_b64(os.path.join(p_comp, "fig5_pilgl_wld_architecture.png")))
+    content = content.replace("{{B64_COMP_F6}}", img_to_b64(os.path.join(p_comp, "fig6_cnn_pinn_vs_base_pilgl.png")))
+    content = content.replace("{{B64_COMP_F7}}", img_to_b64(os.path.join(p_comp, "fig7_heatmap_method_arch.png")))
+    content = content.replace("{{B64_COMP_F8}}", img_to_b64(os.path.join(p_comp, "fig8_summary_best_methods.png")))
 
     with open(output_html, "w", encoding="utf-8") as f:
         f.write(content)
