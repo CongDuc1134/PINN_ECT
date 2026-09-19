@@ -794,51 +794,89 @@
 <!-- SECTION 7: FIGURES -->
 <h2 class="section-title">7. Bộ Đồ Thị Minh Chứng Chuẩn Xuất Bản IEEE Transactions (300 DPI)</h2>
 
+<h3 class="sub-title">7.1 Phân Tích Toàn Diện 19 Checkpoints, Sai Số W-L-D & Đánh Giá Từng Lớp Khuyết Tật</h3>
+<p>
+  Tất cả các hình ảnh dưới đây được tạo lập theo quy chuẩn khắt khe của <strong>IEEE Transactions</strong>: Font chữ chuẩn <em>Times New Roman</em>, độ phân giải <strong>300 DPI</strong>, vạch đo hướng vào trong (inward ticks), dải màu chuyên nghiệp phân biệt rõ ràng giữa PINN và Không PINN (Baseline), tích hợp đường phân định lý tưởng $y=x$ và dải biên sai số $\pm 0.5$ mm.
+</p>
+
+<div class="grid-2col">
+  <div class="figure-card">
+    <img src="{{B64_IEEE_F1}}" alt="IEEE Fig 1">
+    <div class="caption"><strong>Hình 1 (IEEE Benchmark 19 Models):</strong> Đánh giá đối đầu toàn diện Độ chính xác phân loại (%) và MAE Tổng (mm) giữa PINN và Baseline trên 19 checkpoints từ 1% đến 10% dữ liệu.</div>
+  </div>
+  <div class="figure-card">
+    <img src="{{B64_IEEE_F2}}" alt="IEEE Fig 2">
+    <div class="caption"><strong>Hình 2 (IEEE Dimension Breakdown):</strong> Phân bố Boxplot sai số tuyệt đối MAE của ba chiều không gian Khuyết tật (Bề rộng $W$, Chiều dài $L$, Độ sâu $D$), chứng minh PINN ghìm chặt sai số chiều dài.</div>
+  </div>
+</div>
+
+<div class="grid-2col">
+  <div class="figure-card">
+    <img src="{{B64_IEEE_F3}}" alt="IEEE Fig 3">
+    <div class="caption"><strong>Hình 3 (IEEE Per-Class Accuracy):</strong> Độ chính xác phân loại chi tiết theo từng dạng khuyết tật hình học (Rectangular, Triangular, Ellipse, Step_R, Step_T). PINN đạt 100% trên các biên dạng phức tạp.</div>
+  </div>
+  <div class="figure-card">
+    <img src="{{B64_IEEE_F4}}" alt="IEEE Fig 4">
+    <div class="caption"><strong>Hình 4 (IEEE Per-Class WLD MAE):</strong> Sai số hồi quy chi tiết cho từng chiều kích thước ($W, L, D$) trên từng lớp khuyết tật hình học, minh chứng tính ổn định vật lý cao của PINN.</div>
+  </div>
+</div>
+
+<div style="margin-bottom: 20px;">
+  <div class="figure-card">
+    <img src="{{B64_IEEE_F5}}" alt="IEEE Fig 5" style="max-height: 280px; object-fit: contain;">
+    <div class="caption"><strong>Hình 5 (IEEE Parity Plots - Dự Đoán vs Thực Nghiệm):</strong> Biểu đồ đối sánh giá trị dự đoán và giá trị thực đo của Chiều rộng $W$, Chiều dài $L$ và Độ sâu $D$. Hầu hết các điểm mẫu của PINN hội tụ chặt chẽ trong dải biên sai số $\pm 0.5$ mm dọc theo đường tham chiếu $y=x$.</div>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<h3 class="sub-title">7.2 Khảo Sát Cơ Chế Lọc Độ Cong Laplacian & Đánh Giá Phôi Mới Lạ (10-Fold LODO)</h3>
+
 <div class="grid-2col">
   <div class="figure-card">
     <img src="{{B64_F1_LGL}}" alt="Fig 1">
-    <div class="caption"><strong>Hình 1 (PI-LGL):</strong> So sánh đối đầu kép Accuracy (%) và MAE Tổng (mm) giữa PINN và NoPINN trên 11 checkpoints.</div>
+    <div class="caption"><strong>Hình 6 (PI-LGL Focus):</strong> So sánh đối đầu kép Accuracy (%) và MAE Tổng (mm) giữa PINN và NoPINN trên các tỷ lệ dữ liệu chủ chốt.</div>
   </div>
   <div class="figure-card">
     <img src="{{B64_F2_LGL}}" alt="Fig 2">
-    <div class="caption"><strong>Hình 2 (PI-LGL):</strong> Phân tích Boxplot sai số chiều dài $L$, chứng minh PINN giảm tới 60% sai số so với Baseline.</div>
+    <div class="caption"><strong>Hình 7 (PI-LGL Focus):</strong> Phân tích Boxplot sai số chiều dài $L$, chứng minh PINN giảm tới 60% sai số so với Baseline.</div>
   </div>
 </div>
 
 <div class="grid-2col">
   <div class="figure-card">
     <img src="{{B64_F3_LGL}}" alt="Fig 3">
-    <div class="caption"><strong>Hình 3 (PI-LGL):</strong> Phân bố vi phân cấp 2 chứng minh tính phân tách tuyệt đối giữa vết nứt cong và gián đoạn.</div>
+    <div class="caption"><strong>Hình 8 (PI-LGL):</strong> Phân bố vi phân cấp 2 chứng minh tính phân tách tuyệt đối giữa vết nứt cong và gián đoạn bậc.</div>
   </div>
   <div class="figure-card">
     <img src="{{B64_F4_LGL}}" alt="Fig 4">
-    <div class="caption"><strong>Hình 4 (PI-LGL):</strong> Ma trận nhầm lẫn của mô hình PINN đạt độ chính xác 90.0% (đoán đúng 9/10 mẫu kiểm tra mù).</div>
+    <div class="caption"><strong>Hình 9 (PI-LGL):</strong> Ma trận nhầm lẫn của mô hình PINN đạt độ chính xác 90.0% (đoán đúng 9/10 mẫu kiểm tra mù).</div>
   </div>
 </div>
 
 <div class="page-break"></div>
 
-<h3 class="sub-title">Hình Ảnh Bổ Trợ: Kết Quả Trên Phôi Mới Lạ Hoàn Toàn (10-Fold LODO)</h3>
+<h3 class="sub-title">7.3 Hình Ảnh Bổ Trợ: Kết Quả Trên Phôi Mới Lạ Hoàn Toàn (10-Fold LODO)</h3>
 
 <div class="grid-2col">
   <div class="figure-card">
-    <img src="{{B64_F1_NEW}}" alt="Fig 5">
-    <div class="caption"><strong>Hình 5 (LODO):</strong> Bước nhảy vọt của PINN (60%) so với NoPINN (55%) khi kiểm thử trên các phôi lạ chưa từng thấy.</div>
+    <img src="{{B64_F1_NEW}}" alt="Fig 10">
+    <div class="caption"><strong>Hình 10 (LODO):</strong> Bước nhảy vọt của PINN (60%) so với NoPINN (55%) khi kiểm thử trên các phôi lạ chưa từng thấy.</div>
   </div>
   <div class="figure-card">
-    <img src="{{B64_F2_NEW}}" alt="Fig 6">
-    <div class="caption"><strong>Hình 6 (LODO):</strong> Phân rã sai số kích thước MAE của $W, L, D$ trên phôi lạ chứng minh tính tổng quát hóa cao của PINN.</div>
+    <img src="{{B64_F2_NEW}}" alt="Fig 11">
+    <div class="caption"><strong>Hình 11 (LODO):</strong> Phân rã sai số kích thước MAE của $W, L, D$ trên phôi lạ chứng minh tính tổng quát hóa cao của PINN.</div>
   </div>
 </div>
 
 <div class="grid-2col">
   <div class="figure-card">
-    <img src="{{B64_F3_NEW}}" alt="Fig 7">
-    <div class="caption"><strong>Hình 7 (LODO):</strong> Quỹ đạo tiến hóa của Accuracy và MAE qua 7 mốc kỹ thuật từ Zero-Shot đến PI-LoRA Calibrated.</div>
+    <img src="{{B64_F3_NEW}}" alt="Fig 12">
+    <div class="caption"><strong>Hình 12 (LODO):</strong> Quỹ đạo tiến hóa của Accuracy và MAE qua 7 mốc kỹ thuật từ Zero-Shot đến PI-LoRA Calibrated.</div>
   </div>
   <div class="figure-card">
-    <img src="{{B64_F4_NEW}}" alt="Fig 8">
-    <div class="caption"><strong>Hình 8 (LODO):</strong> Ma trận nhầm lẫn chi tiết của phương pháp LoRA thích ứng tốt nhất trên phôi lạ.</div>
+    <img src="{{B64_F4_NEW}}" alt="Fig 13">
+    <div class="caption"><strong>Hình 13 (LODO):</strong> Ma trận nhầm lẫn chi tiết của phương pháp LoRA thích ứng tốt nhất trên phôi lạ.</div>
   </div>
 </div>
 

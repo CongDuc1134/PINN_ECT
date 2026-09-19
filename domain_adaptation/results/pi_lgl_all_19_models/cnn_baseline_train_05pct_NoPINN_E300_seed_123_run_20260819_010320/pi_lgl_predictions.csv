@@ -1,0 +1,11 @@
+test_id,method,filename,crack_no,true_shape,raw_pred_shape,final_pred_shape,shape_correct,max_laplacian,lap_gated,true_w,pred_w,err_w,true_l,pred_l,err_l,true_d,pred_d,err_d,pred_shape
+1,PI_LGL,5khz_No10_1.csv,10,Step_T,Step_T,Step_T,1,0.18821397423744202,0,0.5,0.46382618,0.03617382,10.0,8.857502,1.142498,3.0,2.254528,0.74547195,Step_T
+2,PI_LGL,5khz_No1_1.csv,1,Rectangular,Rectangular,Rectangular,1,0.10083994269371033,0,0.7,0.7066507,0.0066506863,10.0,8.154461,1.8455391,1.0,1.2266484,0.22664845,Rectangular
+3,PI_LGL,5khz_No2_1.csv,2,Rectangular,Rectangular,Rectangular,1,0.17185215651988983,0,0.7,0.49276364,0.20723635,10.0,8.28648,1.71352,2.0,1.9611068,0.038893223,Rectangular
+4,PI_LGL,5khz_No3_1.csv,3,Rectangular,Rectangular,Rectangular,1,0.19899320602416992,0,0.7,0.5302744,0.1697256,10.0,8.686692,1.3133078,3.0,2.0259228,0.9740772,Rectangular
+5,PI_LGL,5khz_No4_1.csv,4,Ellipse,Ellipse,Ellipse,1,0.04997100308537483,0,0.7,0.5782783,0.121721685,10.0,8.587508,1.4124918,3.0,2.1179886,0.8820114,Ellipse
+6,PI_LGL,5khz_No5_1.csv,5,Ellipse,Ellipse,Ellipse,1,0.0698552131652832,0,0.9,0.6629368,0.23706317,10.0,8.635728,1.3642721,3.0,2.0110192,0.98898077,Ellipse
+7,PI_LGL,5khz_No6_1.csv,6,Triangular,Triangular,Triangular,1,0.09605974704027176,0,0.7,0.72972524,0.029725254,10.0,10.056694,0.05669403,1.0,2.206882,1.206882,Triangular
+8,PI_LGL,5khz_No7_1.csv,7,Triangular,Triangular,Triangular,1,0.160342738032341,0,0.7,0.76081014,0.06081015,10.0,10.705725,0.7057247,2.0,2.1681144,0.16811442,Triangular
+9,PI_LGL,5khz_No8_1.csv,8,Triangular,Triangular,Triangular,1,0.15785276889801025,0,0.7,0.68719286,0.012807131,10.0,9.89404,0.10595989,3.0,2.649189,0.350811,Triangular
+10,PI_LGL,5khz_No9_1.csv,9,Step_R,Step_R,Step_R,1,0.20161467790603638,0,0.5,0.5349115,0.034911513,10.0,9.9901495,0.009850502,3.0,2.714405,0.28559494,Step_R
