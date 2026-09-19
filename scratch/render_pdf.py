@@ -28,9 +28,16 @@ def main():
     p_lgl = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", "plots_pi_lgl")
     p_new = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", "plots_new_methods")
     p_ieee = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", "plots_ieee_comprehensive")
+    p_arch = os.path.join(PROJECT_ROOT, "domain_adaptation", "results", "plots_architecture_comparison")
 
     with open(template_path, "r", encoding="utf-8") as f:
         content = f.read()
+
+    # Replacements Architecture Comparison plots (CNN vs Multitask MLP vs Xiong MLP)
+    content = content.replace("{{B64_ARCH_F1}}", img_to_b64(os.path.join(p_arch, "fig1_cross_method_architecture_comparison.png")))
+    content = content.replace("{{B64_ARCH_F2}}", img_to_b64(os.path.join(p_arch, "fig2_data_scaling_comparison_cnn_vs_mlp.png")))
+    content = content.replace("{{B64_ARCH_F3}}", img_to_b64(os.path.join(p_arch, "fig3_spatial_dimension_breakdown_architectures.png")))
+    content = content.replace("{{B64_ARCH_F4}}", img_to_b64(os.path.join(p_arch, "fig4_pi_lgl_master_architecture_benchmark.png")))
 
     # Replacements IEEE Comprehensive plots
     content = content.replace("{{B64_IEEE_F1}}", img_to_b64(os.path.join(p_ieee, "fig1_master_acc_mae_19models.png")))

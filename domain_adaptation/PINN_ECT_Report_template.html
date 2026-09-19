@@ -609,6 +609,29 @@
   Ngược lại, <strong>MLP phẳng hóa</strong> xem 1089 điểm đo như các biến độc lập, làm mất hoàn toàn hình học vi sai, dẫn đến việc không thể thích ứng miền trong thực tế.
 </div>
 
+<h4 class="sub-title">Minh Chứng Đồ Thị Đối Đầu Chuẩn IEEE Giữa Các Kiến Trúc (CNN vs MLP)</h4>
+<div class="grid-2col">
+  <div class="figure-card">
+    <img src="{{B64_ARCH_F1}}" alt="Arch Fig 1">
+    <div class="caption"><strong>Hình 2.1 (Đối đầu đa phương pháp):</strong> Độ chính xác phân loại (%) và Sai số chiều dài $L$ (mm, thang Log) giữa CNN, Multitask MLP và Xiong MLP qua 5 phương pháp thích ứng.</div>
+  </div>
+  <div class="figure-card">
+    <img src="{{B64_ARCH_F2}}" alt="Arch Fig 2">
+    <div class="caption"><strong>Hình 2.2 (Mở rộng quy mô dữ liệu):</strong> Tiến trình Accuracy và MAE chiều dài theo tỷ lệ dữ liệu tiền huấn luyện từ 1% đến 10%. CNN ổn định trong khi MLP sai số bùng nổ.</div>
+  </div>
+</div>
+
+<div class="grid-2col">
+  <div class="figure-card">
+    <img src="{{B64_ARCH_F3}}" alt="Arch Fig 3">
+    <div class="caption"><strong>Hình 2.3 (Phân rã không gian 3 chiều):</strong> Sai số MAE của $W, L, D$, minh chứng việc phẳng hóa 1D của MLP phá hủy hoàn toàn việc ước lượng chiều dài $L$ và độ sâu $D$.</div>
+  </div>
+  <div class="figure-card">
+    <img src="{{B64_ARCH_F4}}" alt="Arch Fig 4">
+    <div class="caption"><strong>Hình 2.4 (Benchmark PI-LGL toàn diện):</strong> So sánh tổng hợp phương pháp tối thượng PI-LGL trên 43 models (19 CNN vs 12 Multitask MLP vs 12 Xiong MLP).</div>
+  </div>
+</div>
+
 <div class="page-break"></div>
 
 <!-- SECTION 3 -->

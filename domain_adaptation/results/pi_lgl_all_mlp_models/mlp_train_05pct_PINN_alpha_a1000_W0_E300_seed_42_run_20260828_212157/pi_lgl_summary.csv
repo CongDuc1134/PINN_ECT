@@ -1,0 +1,2 @@
+Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
+PI_LGL,10,30.0,"[0.0, 60.0]",20.0,9.23,"[0.0, 22.2]",0.0,2.1528,7.8813,5.0049,538.2,78.8,250.2,289.1,5.013,5.2885,-423.452,-40.218
