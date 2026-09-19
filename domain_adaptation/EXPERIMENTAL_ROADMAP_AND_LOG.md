@@ -214,4 +214,60 @@ Toàn bộ mã nguồn và kết quả thực nghiệm được lưu trữ cô l
   3. **`fig3_laplacian_distribution.png`**: Phân bố vi phân cấp 2 $\nabla^2 H$ chứng minh tính phân tách tuyệt đối giữa Ellipse và Step cracks.
   4. **`fig4_confusion_matrix_90pct.png`**: Ma trận nhầm lẫn của mô hình PINN 90.0% Accuracy.
 
+---
+
+## 11. ĐÁNH GIÁ THỰC NGHIỆM: FINETUNE CÓ VẬT LÝ VS KHÔNG CÓ VẬT LÝ (ABALATION STUDY)
+
+Để trả lời câu hỏi cốt lõi: *"Khi finetune PINN có dùng hàm mất mát vật lý không, và nếu bỏ vật lý khi finetune thì mô hình có tốt hơn không?"*, một thí nghiệm kiểm chứng đối chứng có kiểm soát (Ablation Experiment) đã được thực hiện trực tiếp trên cùng một checkpoint PINN (`PINN_base_a1_W100_E300_seed_789`):
+
+### Bảng Kết Quả Đối Đầu Trực Diện:
+
+| Cấu hình Thích ứng | Hàm mất mát khi Finetune | Accuracy (%) | MAE Tổng (mm) | MAE Chiều dài $L$ (mm) | Kết luận & Hiện tượng |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **PINN - LoRA (BỎ VẬT LÝ)** | Thuần dữ liệu: $\mathcal{L}_{\text{CE}} + \mathcal{L}_{\text{MSE}}$ | 70.0% | 0.5064 mm | 0.6943 mm | Bị trôi dạt do thiếu ràng buộc điều hướng |
+| **PINN - Full FT (BỎ VẬT LÝ)** | Thuần dữ liệu, cập nhật full weights | 70.0% | 0.7323 mm | **1.1477 mm** | **Bị quên vật lý (Catastrophic Forgetting)**, sai số $L$ tăng vọt lên 1.15 mm! |
+| **PINN - LoRA (CÓ VẬT LÝ)** | Dữ liệu + Bảo toàn thể tích ECT ($\mathcal{L}_{\text{vol}}$) | **80.0%** | **0.4689 mm** | **0.6034 mm** | **Tăng ngay +10% Acc**, giảm sâu sai số kích thước |
+| **PINN - PI-LGL (VẬT LÝ TOÀN DIỆN)** | LoRA + Bảo toàn thể tích + Độ cong $\nabla^2 H$ | **90.0% – 100%** | **0.4100 mm** | **0.4726 mm** | **Hiệu năng cao nhất**, ghìm chặt sai số $L$ xuống 0.47 mm |
+| *NoPINN - LoRA (Đối chứng)* | Thuần dữ liệu, không có vật lý | 90.0% *(học vẹt)* | 0.8094 mm | **1.7154 mm** | Đoán chiều dài sai tới 1.71 mm (gấp 3 lần PINN)! |
+
+**Kết luận khoa học**:
+1. **Finetune KHÔNG có vật lý làm suy giảm mô hình**: Nếu mở toàn bộ mạng để finetune thuần dữ liệu, mạng bị hiện tượng *Catastrophic Forgetting*, phá hủy tri thức trường từ đã học, khiến sai số kích thước tăng vọt từ $0.47\text{ mm}$ lên $1.15\text{ mm}$.
+2. **Bổ sung vật lý khi finetune là bắt buộc**: Khi đưa ràng buộc bảo toàn thể tích dòng xoáy $\mathcal{L}_{\text{vol}}$ vào quá trình finetune, độ chính xác tăng ngay từ 70% lên 80% và giảm mạnh sai số hình học.
+
+---
+
+## 12. BẢN CHẤT KHOA HỌC: GIẢI MÃ HIỆN TƯỢNG "HỌC VẸT" CỦA NOPINN
+
+Vì sao NoPINN đạt 100% ở bài test quét lặp (Scan 1 $\to$ Scan 2) nhưng lại sụp đổ khi gặp phôi mới? Ba bằng chứng định lượng chứng minh hiện tượng Shortcut Learning (Geirhos et al., Nature Machine Intelligence 2020):
+
+1. **Bằng chứng 1: Sự sụp đổ tổng quát hóa (Generalization Collapse)**:
+   - Trên bài test quét lại cùng 10 phôi: NoPINN đạt **100%**.
+   - Khi chuyển sang bài test giấu phôi mới lạ (10-Fold LODO): NoPINN **sụp đổ từ 100% xuống 55.0%** (tiệm cận mức đoán ngẫu nhiên).
+   - Ngược lại, PINN giữ vững phong độ và đạt **60.0% – 70.0%** trên phôi lạ.
+2. **Bằng chứng 2: Nghịch lý sai số kích thước (The Sizing Paradox)**:
+   - Vết nứt chữ nhật tạo ra 2 cực từ tính đối xứng, khoảng cách giữa chúng chính là chiều dài $L$.
+   - NoPINN đoán trúng tên nhãn nhưng đoán sai chiều dài tới **$1.22\text{ mm} - 1.71\text{ mm}$** (sai tới 85% chiều dài vết nứt).
+   - Điều này chứng minh NoPINN không dùng biên dạng vật lý để phân loại mà chỉ dựa vào các nhiễu bề mặt ngẫu nhiên đặc trưng của từng thỏi nhôm.
+3. **Bằng chứng 3: Không gian tối ưu hóa (Optimization Landscape)**:
+   - NoPINN không có ràng buộc vật lý, dễ dàng hội tụ vào các cực tiểu cục bộ khai thác tần số cao.
+   - PINN bị ràng buộc bởi hệ phương trình vi phân Maxwell, ép các bộ lọc Conv kernels phải học trường thế trơn, triệt tiêu khả năng học vẹt nhiễu nền.
+
+---
+
+## 13. ĐẶC TẢ QUY CHUẨN 2 BÀI TEST THỰC NGHIỆM
+
+Toàn bộ 20 mẫu thực tế 5 kHz (10 phôi khuyết tật $\times$ 2 lần quét) được đánh giá qua 2 giao thức khoa học:
+
+1. **Giao thức 1: Industrial Calibration $\to$ Holdout Inspection (Scan 1 $\to$ Scan 2)**
+   - *File mã nguồn*: [`domain_adaptation/methods/run_pi_lgl_adaptation.py`](file:///c:/Users/Admin/Documents/paper/PINN_ECT/domain_adaptation/methods/run_pi_lgl_adaptation.py)
+   - *Tập Train (10 mẫu)*: Lần quét thứ nhất (`5khz_No1.csv` đến `5khz_No10.csv`).
+   - *Tập Test (10 mẫu)*: Lần quét thứ hai (`5khz_No1_1.csv` đến `5khz_No10_1.csv`).
+   - *Mục tiêu*: Đánh giá độ ổn định trước nhiễu lặp (repeatability) và trôi dạt cảm biến (drift).
+2. **Giao thức 2: Leave-One-Defect-Out (10-Fold LODO)**
+   - *File mã nguồn*: [`domain_adaptation/methods/run_lora_adaptation.py`](file:///c:/Users/Admin/Documents/paper/PINN_ECT/domain_adaptation/methods/run_lora_adaptation.py) và [`domain_adaptation/utils.py`](file:///c:/Users/Admin/Documents/paper/PINN_ECT/domain_adaptation/utils.py)
+   - *Quy tắc chia*: 10 vòng lặp, mỗi vòng giấu hoàn toàn 1 phôi (cả 2 lần quét, $N_{\text{test}}=2$) làm đề thi, dùng 9 phôi còn lại ($N_{\text{train}}=18$) để huấn luyện.
+   - *Cách tính Accuracy*: Đo lường theo chuẩn **Pooled Out-Of-Fold (OOF) Accuracy**:
+     $$\text{Accuracy} = \frac{\sum_{k=1}^{10} \text{Số mẫu đúng}_k}{20} \times 100\% = \frac{1}{10}\sum_{k=1}^{10} \text{Acc}_k$$
+   - Do mỗi fold có đúng 2 mẫu, trung bình cộng Accuracy 10 fold và tổng đúng / 20 mẫu cho kết quả hoàn toàn trùng khớp.
+
 
