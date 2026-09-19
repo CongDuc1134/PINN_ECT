@@ -113,9 +113,16 @@ MAE Độ sâu D (mm)        1.050 mm      1.020 mm       0.965 mm             1
 Toàn bộ đồ thị được xuất bản tại thư mục `domain_adaptation/results/plots_new_methods/` với độ phân giải 300 DPI, font chữ có chân (Serif/Times New Roman), vạch chia hướng vào trong (dual inward ticks):
 
 1. **`fig1_pinn_vs_nopinn_headtohead.png`**: Biểu đồ cột đôi so sánh trực tiếp bước nhảy vọt của PINN vs NoPINN từ Old PEFT sang PI-LoRA Calibrated.
+   ![So sánh đối đầu PINN vs NoPINN](results/plots_new_methods/fig1_pinn_vs_nopinn_headtohead.png)
+
 2. **`fig2_dimension_breakdown_mae.png`**: Phân rã sai số kích thước MAE của $W, L, D$ chứng minh PINN vượt trội ở chiều dài và chiều sâu.
+   ![Phân rã sai số kích thước W, L, D](results/plots_new_methods/fig2_dimension_breakdown_mae.png)
+
 3. **`fig3_ablation_progression.png`**: Đồ thị quỹ đạo tiến hóa (Evolution Trajectory) của Accuracy và MAE qua 7 mốc kỹ thuật từ Zero-Shot đến PI-LoRA Calibrated.
+   ![Quỹ đạo tiến hóa các phương pháp](results/plots_new_methods/fig3_ablation_progression.png)
+
 4. **`fig4_confusion_matrix_best_lora.png`**: Ma trận nhầm lẫn (Confusion Matrix) chi tiết của mô hình PI-LoRA Calibrated xuất sắc nhất.
+   ![Ma trận nhầm lẫn PI-LoRA](results/plots_new_methods/fig4_confusion_matrix_best_lora.png)
 
 
 ## 7. ĐÓNG GÓP HỌC THUẬT CHO BÀI BÁO Q1
@@ -210,9 +217,16 @@ Toàn bộ mã nguồn và kết quả thực nghiệm được lưu trữ cô l
 - **`domain_adaptation/results/trial_13_pi_lgl_90pct/`**: Chứa toàn bộ file predictions CSV và `pi_lgl_master_benchmark_summary.csv` của 11 models.
 - **`domain_adaptation/results/plots_pi_lgl/`**: Bộ 4 đồ thị chuẩn IEEE Transactions (300 DPI, Times New Roman, inward ticks):
   1. **`fig1_pilgl_master_benchmark.png`**: Biểu đồ kép Accuracy & MAE của 11 model chứng minh tính ổn định của PI-LGL.
+     ![Master Benchmark PI-LGL](results/plots_pi_lgl/fig1_pilgl_master_benchmark.png)
+
   2. **`fig2_length_mae_reduction.png`**: Biểu đồ Boxplot phân tích sai số chiều dài $L$, chứng minh PINN giảm 60% sai số so với NoPINN.
+     ![Giảm 60% sai số chiều dài L](results/plots_pi_lgl/fig2_length_mae_reduction.png)
+
   3. **`fig3_laplacian_distribution.png`**: Phân bố vi phân cấp 2 $\nabla^2 H$ chứng minh tính phân tách tuyệt đối giữa Ellipse và Step cracks.
+     ![Phân bố độ cong Laplace vi phân](results/plots_pi_lgl/fig3_laplacian_distribution.png)
+
   4. **`fig4_confusion_matrix_90pct.png`**: Ma trận nhầm lẫn của mô hình PINN 90.0% Accuracy.
+     ![Ma trận nhầm lẫn PINN 90%](results/plots_pi_lgl/fig4_confusion_matrix_90pct.png)
 
 ---
 
