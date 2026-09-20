@@ -504,26 +504,26 @@
       <td rowspan="4"><strong>3. Xiong et al. MLP PINN</strong><br><em>Mô hình kinh điển tham chiếu</em></td>
       <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
       <td>Source Zero-Shot</td>
-      <td>17.5%</td>
+      <td>N/A* <span style="font-size:7.5pt;color:#64748b;">(17.5% aux)</span></td>
       <td>619.90 mm</td>
       <td>1542.07 mm</td>
-      <td rowspan="4"><strong>Phân kỳ hồi quy:</strong> Thiếu tầng chuẩn hóa không gian cục bộ và cơ chế cân bằng bất định, sai số hồi quy kích thước phân kỳ hoàn toàn trên dữ liệu thực tế (> 600 mm).</td>
+      <td rowspan="4"><strong>Phân kỳ hồi quy &amp; Không phân loại:</strong> Mô hình gốc Xiong et al. (2023) là <em>Single-Task Regression</em> thuần hồi quy 3 chiều $(W, L, D)$, không có tác vụ phân loại hình dạng (*). Sai số hồi quy kích thước phân kỳ trên dữ liệu thực tế (> 600 mm) do thiếu tầng chuẩn hóa không gian và mất liên kết dipole 2D.</td>
     </tr>
     <tr>
       <td>FewShot PEFT</td>
-      <td>18.3% (Trần 30.0%)</td>
+      <td>N/A* <span style="font-size:7.5pt;color:#64748b;">(18.3% aux)</span></td>
       <td>618.63 mm</td>
       <td>1538.98 mm</td>
     </tr>
     <tr>
       <td>Domain Transfer MMD</td>
-      <td>12.9%</td>
+      <td>N/A* <span style="font-size:7.5pt;color:#64748b;">(12.9% aux)</span></td>
       <td>618.28 mm</td>
       <td>1538.60 mm</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>PI-LGL (Thực nghiệm mới)</strong></td>
-      <td><strong>30.8%</strong> (Trần 30.0%)</td>
+      <td><strong>N/A*</strong> <span style="font-size:7.5pt;color:#64748b;">(30.8% aux)</span></td>
       <td><strong>621.76 mm</strong></td>
       <td><strong>1546.68 mm</strong></td>
     </tr>
@@ -548,7 +548,7 @@
       <td><strong>80.0% / 0.348 mm</strong></td>
       <td>100.0% / 1.226 mm</td>
       <td>30.0% / 0.950 mm</td>
-      <td>50.0% / 4383 mm (Phân kỳ)</td>
+      <td>N/A* / 4383 mm (Phân kỳ)</td>
       <td>CNN PINN nén sai số $L$ xuống 0.35 mm; Xiong MLP nổ sai số tới hàng nghìn mm.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -556,7 +556,7 @@
       <td><strong>90.0% / 0.507 mm</strong></td>
       <td>100.0% / 0.875 mm</td>
       <td>30.0% / 7.819 mm</td>
-      <td>30.0% / 1229 mm (Sụp đổ)</td>
+      <td>N/A* / 1229 mm (Sụp đổ)</td>
       <td>CNN duy trì $L$-MAE quanh 0.5 mm; MLP sai số chiều dài gấp 15&ndash;2400 lần.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -564,7 +564,7 @@
       <td><strong>80.0% / 0.448 mm</strong></td>
       <td>90.0% / 1.192 mm</td>
       <td>30.0% / 8.729 mm</td>
-      <td>30.0% / 3159 mm</td>
+      <td>N/A* / 3159 mm</td>
       <td>PINN giảm 62% sai số $L$ so với Baseline (0.45 mm vs 1.19 mm); MLP kẹt cứng ở 30% Acc.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -572,7 +572,7 @@
       <td><strong>60.0% / 0.968 mm</strong></td>
       <td>100.0% / 0.967 mm</td>
       <td>30.0% / 1.454 mm</td>
-      <td>30.0% / 448 mm</td>
+      <td>N/A* / 448 mm</td>
       <td>Cả hai biến thể CNN đều kiểm soát sai số $L < 1.0$ mm; Xiong MLP sai số 448 mm.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -580,7 +580,7 @@
       <td><strong>80.0% / 0.600 mm</strong></td>
       <td>100.0% / 0.724 mm</td>
       <td>40.0% / 3.448 mm</td>
-      <td>20.0% / 426 mm</td>
+      <td>N/A* / 426 mm</td>
       <td>CNN tái tạo biên dạng ổn định qua seed ngẫu nhiên; MLP hoàn toàn mất phương hướng.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -588,7 +588,7 @@
       <td><strong>80.0% / 0.769 mm</strong></td>
       <td>100.0% / 0.825 mm</td>
       <td>30.0% / 7.633 mm</td>
-      <td>30.0% / 804 mm</td>
+      <td>N/A* / 804 mm</td>
       <td>CNN đạt chuẩn kiểm định NDT; Multitask MLP sai số $L$ tới 7.63 mm.</td>
     </tr>
     <tr>
@@ -596,7 +596,7 @@
       <td><strong>90.0% / 1.192 mm</strong></td>
       <td>90.0% / 1.192 mm</td>
       <td>10.0% / 2.348 mm</td>
-      <td>30.0% / 229 mm</td>
+      <td>N/A* / 229 mm</td>
       <td>Khi bỏ ràng buộc vật lý, sai số chiều dài $L$ của CNN vọt lên 1.19 mm (tăng +166%).</td>
     </tr>
     <tr class="highlight-pinn">
@@ -604,7 +604,7 @@
       <td><strong>90.0% / 0.638 mm</strong></td>
       <td>&mdash;</td>
       <td>30.0% / 7.881 mm</td>
-      <td>30.0% / 1095 mm</td>
+      <td>N/A* / 2801 mm</td>
       <td>Ràng buộc vật lý &alpha;=10 hỗ trợ CNN đạt 90% Acc và ghìm sai số $L$ ở 0.64 mm.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -612,7 +612,7 @@
       <td><strong>80.0% / 0.809 mm</strong></td>
       <td>&mdash;</td>
       <td>30.0% / 7.881 mm</td>
-      <td>30.0% / 1095 mm</td>
+      <td>N/A* / 3384 mm</td>
       <td>Ràng buộc &alpha; cao giữ ổn định kích thước cho CNN, nhưng không cứu vãn được MLP.</td>
     </tr>
     <tr class="highlight-pinn">
@@ -620,7 +620,7 @@
       <td><strong>90.0% / 0.813 mm</strong></td>
       <td>&mdash;</td>
       <td>30.0% / 7.881 mm</td>
-      <td>30.0% / 1095 mm</td>
+      <td>N/A* / 1095 mm</td>
       <td>PINN CNN duy trì 90% Acc ngay cả với trọng số vật lý cực lớn (&alpha;=1000).</td>
     </tr>
     <tr class="highlight-pinn">
@@ -628,7 +628,7 @@
       <td><strong>60.0% / 1.268 mm</strong></td>
       <td>100.0% / 1.348 mm</td>
       <td>30.0% / 10.609 mm</td>
-      <td>30.0% / 597 mm</td>
+      <td>N/A* / 597 mm</td>
       <td>Multitask MLP sai số chiều dài lên tới 10.61 mm (gấp 8 lần CNN).</td>
     </tr>
     <tr class="highlight-pinn">
@@ -636,11 +636,14 @@
       <td><strong>60.0% / 0.965 mm</strong></td>
       <td>100.0% / 1.042 mm</td>
       <td>40.0% / 3.294 mm</td>
-      <td>30.0% / 8.3 mm</td>
+      <td>N/A* / 8.3 mm</td>
       <td>Ngay cả ở 10% dữ liệu, MLP vẫn tụt hậu xa so với CNN về độ chính xác và độ mịn vật lý.</td>
     </tr>
   </tbody>
 </table>
+<p style="font-size: 8.0pt; color: #475569; margin-top: 4px; line-height: 1.4;">
+  <em>(*) Ghi chú chuẩn mực khoa học: Mô hình tham chiếu Xiong et al. (2023) là kiến trúc thuần hồi quy kích thước khuyết tật (Single-Task Regression: $W, L, D$), không có tác vụ phân loại hình dạng (Classification). Cột kết quả phân loại được ghi nhận là <strong>N/A*</strong>; trong các thực nghiệm benchmark thích ứng miền, việc bổ sung đầu phân loại tuyến tính phụ (auxiliary head) chỉ đạt mức đoán mò ~20&ndash;30%.</em>
+</p>
 
 <div class="callout-info">
   <strong>KẾT LUẬN VỀ MẶT CƠ CHẾ KIẾN TRÚC MẠNG:</strong><br>
@@ -711,12 +714,12 @@
       <td><strong>XIONG</strong></td>
       <td>Xiong et al. MLP (1D)</td>
       <td>Có (PINN &alpha;=1)</td>
-      <td>30.0%</td>
+      <td><strong>N/A*</strong> <span style="font-size:7.5pt;color:#64748b;">(30% aux)</span></td>
       <td>99.222 mm</td>
       <td>3158.814 mm</td>
       <td>86.901 mm</td>
       <td>1114.979 mm</td>
-      <td><strong>Phân kỳ hồi quy:</strong> Thiếu tầng chuẩn hóa không gian, sai số kích thước nổ hàng nghìn mm.</td>
+      <td><strong>Thuần hồi quy (Không phân loại):</strong> Mô hình gốc Xiong et al. là <em>Single-Task Regression</em> (*). Phân kỳ kích thước nghiêm trọng do phẳng hóa 1D làm mất cấu trúc không gian 2D.</td>
     </tr>
     <tr>
       <td><strong>MLP NO PINN</strong></td>
@@ -731,6 +734,9 @@
     </tr>
   </tbody>
 </table>
+<p style="font-size: 8.5pt; color: #475569; margin-top: 5px; line-height: 1.4;">
+  <em>(*) Chú thích tính toàn vẹn học thuật: Mô hình tham chiếu Xiong et al. (2023) là mạng thuần hồi quy kích thước khuyết tật (Single-Task Regression: $W, L, D$). Cột phân loại được đánh dấu <strong>N/A*</strong> vì bài báo gốc không thiết kế nhánh phân loại hình dạng; mức ~30% là kết quả của đầu phân loại phụ được gắn thêm để khảo sát trong bài toán thích ứng miền.</em>
+</p>
 
 <h4 class="sub-title">Đồ Thị Tổng Hợp Toàn Diện (Master Dashboard): So Sánh Chung Toàn Bộ 5 Mô Hình</h4>
 <div class="figure-card" style="margin: 14px 0;">
@@ -1392,8 +1398,8 @@
     <tr>
       <td>MLP_Xiong (1%, s42, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>50.0%</td>
-      <td>0.407</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>260.780 mm</td>
       <td><strong>4383.5 mm</strong></td>
       <td>515.534 mm</td>
@@ -1402,8 +1408,8 @@
     <tr>
       <td>MLP_Xiong (3%, s42, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>89.676 mm</td>
       <td><strong>1228.9 mm</strong></td>
       <td>280.115 mm</td>
@@ -1412,8 +1418,8 @@
     <tr>
       <td>MLP_Xiong (5%, s42, &alpha;=0)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>0.438 mm</td>
       <td><strong>228.9 mm</strong></td>
       <td>5.875 mm</td>
@@ -1422,8 +1428,8 @@
     <tr>
       <td>MLP_Xiong (5%, s42, &alpha;=1000)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>0.680 mm</td>
       <td><strong>1095.4 mm</strong></td>
       <td>34.747 mm</td>
@@ -1432,8 +1438,8 @@
     <tr>
       <td>MLP_Xiong (5%, s42, &alpha;=100)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.301</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>56.365 mm</td>
       <td><strong>3383.6 mm</strong></td>
       <td>634.413 mm</td>
@@ -1442,8 +1448,8 @@
     <tr>
       <td>MLP_Xiong (5%, s42, &alpha;=10)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>77.641 mm</td>
       <td><strong>2800.9 mm</strong></td>
       <td>683.103 mm</td>
@@ -1452,8 +1458,8 @@
     <tr>
       <td>MLP_Xiong (5%, s123, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>102.489 mm</td>
       <td><strong>448.1 mm</strong></td>
       <td>185.301 mm</td>
@@ -1462,8 +1468,8 @@
     <tr>
       <td>MLP_Xiong (5%, s42, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>99.222 mm</td>
       <td><strong>3158.8 mm</strong></td>
       <td>86.901 mm</td>
@@ -1472,8 +1478,8 @@
     <tr>
       <td>MLP_Xiong (5%, s456, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>20.0%</td>
-      <td>-0.177</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>54.814 mm</td>
       <td><strong>425.8 mm</strong></td>
       <td>82.791 mm</td>
@@ -1482,8 +1488,8 @@
     <tr>
       <td>MLP_Xiong (5%, s789, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>45.744 mm</td>
       <td><strong>804.3 mm</strong></td>
       <td>266.412 mm</td>
@@ -1492,8 +1498,8 @@
     <tr>
       <td>MLP_Xiong (7%, s42, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>48.722 mm</td>
       <td><strong>596.7 mm</strong></td>
       <td>195.487 mm</td>
@@ -1502,8 +1508,8 @@
     <tr>
       <td>MLP_Xiong (10%, s42, &alpha;=1)</td>
       <td><span class="badge-base" style="background:#b91c1c;color:#fff;">Xiong</span></td>
-      <td>30.0%</td>
-      <td>0.000</td>
+      <td>N/A*</td>
+      <td>N/A*</td>
       <td>1.147 mm</td>
       <td>8.350 mm</td>
       <td>11.387 mm</td>
@@ -1511,10 +1517,13 @@
     </tr>
   </tbody>
 </table>
+<p style="font-size: 8.0pt; color: #475569; margin-top: 4px; line-height: 1.4;">
+  <em>(*) Ghi chú học thuật bắt buộc: Toàn bộ 12 checkpoint của Xiong et al. (2023) nguyên bản là mạng thuần hồi quy kích thước khuyết tật 3 chiều $(W, L, D)$ (Single-Task Regression). Cột Accuracy và MCC được ghi nhận chuẩn xác là <strong>N/A*</strong> do kiến trúc không có tác vụ phân loại hình dạng.</em>
+</p>
 
 <div class="callout-danger">
   <strong>NHẬN XÉT ĐẶC BIỆT VỀ KIẾN TRÚC MLP:</strong><br>
-  1. <strong>Xiong et al. MLP:</strong> Sai số chiều dài $L$ phân kỳ tới 4383 mm (trung bình > 600 mm) do thiếu tầng chuẩn hóa không gian và mất cấu trúc 2D dipole.<br>
+  1. <strong>Xiong et al. MLP:</strong> Mô hình nguyên bản là <em>Single-Task Regression</em> thuần hồi quy $(W, L, D)$. Sai số chiều dài $L$ phân kỳ tới 4383 mm (trung bình > 600 mm) do thiếu tầng chuẩn hóa không gian và mất cấu trúc dipole 2D.<br>
   2. <strong>Multitask MLP:</strong> Mặc dù cải thiện được sai số tổng ($0.93&ndash;5.01$ mm), độ chính xác phân loại chỉ kẹt cứng ở mức 30.8% (không vượt quá 50%).<br>
   3. <strong>Kết luận:</strong> Không có bất kỳ mô hình MLP nào đạt tiêu chuẩn công nghiệp kiểm định ECT Sim-to-Real.
 </div>
@@ -1646,7 +1655,7 @@
 <h3 class="sub-title">8.4 Đối Đầu 3 Kiến Trúc: CNN vs Multitask MLP vs Xiong MLP Trên 12 Cấu Hình Checkpoint Tương Đồng</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F4}}" alt="Architecture 12 Matched Checkpoints" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 17 (Đối đầu 3 kiến trúc trên 12 cấu hình):</strong> So sánh song song 3 mô hình tương ứng tại mỗi cấu hình kiểm thử (1%, 3%, 5% các seed, các mức &alpha;, 7%, 10%). (a) Accuracy: CNN (xanh đậm) áp đảo hoàn toàn Multitask MLP (~12%) và Xiong MLP (~17%); (b) Sai số chiều dài $L$ (thang log): Xiong MLP phân kỳ nghiêm trọng (> 100 mm), trong khi CNN kiểm soát chặt chẽ dưới 1.0 mm.</div>
+  <div class="caption"><strong>Hình 17 (Đối đầu 3 kiến trúc trên 12 cấu hình):</strong> So sánh song song 3 mô hình tương ứng tại mỗi cấu hình kiểm thử (1%, 3%, 5% các seed, các mức &alpha;, 7%, 10%). (a) Accuracy: CNN (xanh đậm) áp đảo hoàn toàn Multitask MLP (~12%) và Xiong MLP (được gắn đầu phân loại phụ ~17% do kiến trúc Xiong gốc là Single-Task Regression); (b) Sai số chiều dài $L$ (thang log): Xiong MLP phân kỳ nghiêm trọng (> 100 mm), trong khi CNN kiểm soát chặt chẽ dưới 1.0 mm.</div>
 </div>
 
 <div class="page-break"></div>
@@ -1660,7 +1669,7 @@
 <h3 class="sub-title">8.6 Khảo Sát Chi Tiết Toàn Bộ 24 Checkpoint Kiến Trúc MLP (Multitask MLP vs Xiong MLP)</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F6}}" alt="MLP 24 Checkpoints Detailed" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 19 (Đánh giá chi tiết 24 checkpoint MLP):</strong> (a) Accuracy của 12 checkpoint Multitask MLP và 12 checkpoint Xiong MLP; (b) Sai số chiều dài $L$ (thang log) chứng minh kiến trúc MLP 1D không bảo toàn được cấu trúc không gian 2D, dẫn đến hiện tượng phân kỳ kích thước trên toàn bộ các checkpoint thực nghiệm.</div>
+  <div class="caption"><strong>Hình 19 (Đánh giá chi tiết 24 checkpoint MLP):</strong> (a) Accuracy của 12 checkpoint Multitask MLP và 12 checkpoint Xiong MLP (với đầu phân loại phụ cho bài toán benchmark, do kiến trúc Xiong gốc thuần hồi quy); (b) Sai số chiều dài $L$ (thang log) chứng minh kiến trúc MLP 1D không bảo toàn được cấu trúc không gian 2D, dẫn đến hiện tượng phân kỳ kích thước trên toàn bộ các checkpoint thực nghiệm.</div>
 </div>
 
 <div class="page-break"></div>

@@ -113,7 +113,7 @@ def plot_master_dashboard():
     # XIONG points
     xiong_pts = df_mlp[(df_mlp["Architecture"] == "MLP_Xiong") & (~df_mlp["Model_Tag"].str.contains("alpha_a0"))]
     ax1.scatter(xiong_pts["MAE_L (mm)"], xiong_pts["Clf_Accuracy (%)"], 
-                color=C_XIONG, marker="v", s=65, alpha=0.85, label="XIONG Checkpoints", zorder=4)
+                color=C_XIONG, marker="v", s=65, alpha=0.85, label="XIONG Checkpoints (Aux Head*)", zorder=4)
                 
     # MLP NO PINN points
     mlp_nopinn_pts = df_mlp[df_mlp["Model_Tag"].str.contains("alpha_a0")]
@@ -131,6 +131,10 @@ def plot_master_dashboard():
     # Highlight Catastrophic Failure Zone (> 100 mm)
     ax1.axvspan(100, 6000, color="#fee2e2", alpha=0.4, zorder=1)
     ax1.text(600, 45, "Catastrophic Divergence\n(Xiong et al. MLP)", color="#b91c1c", fontweight="bold", fontsize=7.8, ha="center")
+    
+    # Footnote about Xiong
+    ax1.text(0.22, 3, "*Xiong et al. (2023) is Single-Task Regression (W,L,D); Acc is from auxiliary head.", 
+             fontsize=6.5, fontstyle="italic", color="#475569")
     
     # Tolerance threshold line
     ax1.axvline(1.0, color="#dc2626", linestyle="--", linewidth=1.0, label="NDT Tolerance (1.0 mm)")
@@ -162,7 +166,7 @@ def plot_master_dashboard():
     # Compute normalized scores (0 to 100) for the 5 models
     def get_radar_scores(m):
         v = vals_5pct[m]
-        s_acc = v["Acc"]
+        s_acc = 0.0 if m == "XIONG" else v["Acc"]  # Xiong has no classification task
         s_w = np.clip(1.0 / v["MAE_W"] * 5.0, 0, 100)
         s_l = np.clip(1.0 / v["MAE_L"] * 35.0, 0, 100)
         s_d = np.clip(1.0 / v["MAE_D"] * 45.0, 0, 100)
@@ -174,7 +178,7 @@ def plot_master_dashboard():
         scores += scores[:1]
         lw = 2.2 if m == "PINN" else 1.4
         alpha_fill = 0.22 if m == "PINN" else 0.08
-        ax2.plot(angles, scores, color=c, linewidth=lw, label=m)
+        ax2.plot(angles, scores, color=c, linewidth=lw, label=f"{m} (Reg-only*)" if m == "XIONG" else m)
         ax2.fill(angles, scores, color=c, alpha=alpha_fill)
         
     ax2.set_theta_offset(np.pi / 2)
@@ -197,9 +201,11 @@ def plot_master_dashboard():
     # Subplot with twin axes: Left = Accuracy (%), Right = Sizing Errors (mm)
     ax3_twin = ax3.twinx()
     
-    # Accuracy on Left Axis
-    acc_bars = ax3.bar(x3 - 2*w3, [vals_5pct[m]["Acc"] for m in MODEL_NAMES_5], w3,
+    # Accuracy on Left Axis (Xiong is Single-Task Regression -> N/A)
+    acc_plot_vals = [vals_5pct[m]["Acc"] if m != "XIONG" else 0.0 for m in MODEL_NAMES_5]
+    acc_bars = ax3.bar(x3 - 2*w3, acc_plot_vals, w3,
                        color="#38bdf8", edgecolor="black", linewidth=0.5, label="Accuracy (%) [Left]", zorder=3)
+    ax3.text(x3[3] - 2*w3, 3, "N/A*\n(Reg)", ha="center", va="bottom", fontsize=7.0, fontweight="bold", color="#b91c1c")
                        
     # W, L, D, Overall on Right Axis (Log Scale)
     w_bars = ax3_twin.bar(x3 - w3, [vals_5pct[m]["MAE_W"] for m in MODEL_NAMES_5], w3,
