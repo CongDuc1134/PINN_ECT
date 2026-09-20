@@ -227,6 +227,57 @@
   li {
     margin-bottom: 3px;
   }
+
+  /* MATH CARD & FORMULA STYLING FOR CRYSTAL CLEAR PDF PRINTING */
+  .math-card {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-left: 4px solid #0284c7;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  .math-eq {
+    font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+    font-size: 10.5pt;
+    font-style: italic;
+    color: #0f172a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #cbd5e1;
+  }
+  .math-eq b, .math-eq strong {
+    font-style: normal;
+  }
+  .eq-no {
+    font-style: normal;
+    font-weight: 700;
+    color: #475569;
+    font-size: 9pt;
+  }
+  .math-desc {
+    font-size: 8.5pt;
+    color: #334155;
+    line-height: 1.45;
+  }
+  .math-desc ul {
+    margin: 4px 0 0 16px;
+    padding: 0;
+  }
+  .math-desc li {
+    margin-bottom: 3px;
+  }
+  .var {
+    font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif;
+    font-style: italic;
+    font-weight: 700;
+    color: #0369a1;
+  }
+
 </style>
 </head>
 <body>
@@ -254,17 +305,18 @@
 <div class="callout-success">
   <strong>3 KẾT LUẬN KHOA HỌC THEN CHỐT:</strong>
   <ul>
-    <li><strong>PINN giảm 60% sai số chiều dài vết nứt ($L$):</strong> Sai số ước lượng của PINN được ghìm chặt xuống <strong>0.47 mm</strong> (so với <strong>1.22 mm</strong> của NoPINN, tức sai tới 61% trên vết nứt 2 mm).</li>
+    <li><strong>PINN giảm 60% sai số chiều dài vết nứt (<i>L</i>):</strong> Sai số ước lượng của PINN được ghìm chặt xuống <strong>0.47 mm</strong> (so với <strong>1.22 mm</strong> của NoPINN, tức sai tới 61% trên vết nứt 2 mm).</li>
     <li><strong>NoPINN bị hiện tượng "Học vẹt" (Shortcut Learning):</strong> NoPINN đạt 100% nhờ ghi nhớ vết xước vi mô của chính 10 phôi cũ. Khi kiểm thử trên phôi mới lạ hoàn toàn (10-Fold LODO), NoPINN <strong>sụp đổ từ 100% xuống 55.0%</strong>, trong khi PINN duy trì vượt trội ở mức <strong>60.0% – 70.0%</strong>!</li>
-    <li><strong>Đột phá phương pháp PI-LGL (Laplacian Guarded LoRA):</strong> Nhờ tích hợp bộ lọc độ cong trường từ vi phân $\nabla^2 H$, PINN đạt <strong>90.0% – 100.0% Accuracy</strong> và MAE toàn diện chỉ <strong>0.41 mm</strong>!</li>
+    <li><strong>Đột phá phương pháp PI-LGL (Laplacian Guarded LoRA):</strong> Nhờ tích hợp bộ lọc độ cong trường từ vi phân ∇²<i>H</i>, PINN đạt <strong>90.0% – 100.0% Accuracy</strong> và MAE toàn diện chỉ <strong>0.41 mm</strong>!</li>
   </ul>
 </div>
 
 <!-- SECTION 2: COMPREHENSIVE METHOD EVOLUTION SYNTHESIS -->
 
+
 <h2 class="section-title">2. Báo Cáo Chuyên Sâu Toàn Bộ 13 Phương Pháp Thích Ứng Miền Đã Thực Nghiệm</h2>
 <p>
-  Nhằm giải quyết triệt để bài toán dịch chuyển phân phối (Sim-to-Real Domain Shift) từ mô phỏng phần tử hữu hạn (FEM) sang tín hiệu cảm biến dòng xoáy thực tế 5 kHz, nghiên cứu đã xây dựng, tối ưu và kiểm định độc lập <strong>13 phương pháp thích ứng miền</strong>. Dưới đây là phân tích chi tiết từng phương pháp về: <em>(1) Cơ chế vận hành & kiến trúc mạng; (2) Quy trình lấy mẫu dữ liệu Train/Test; (3) Bảng đối sánh số liệu thực nghiệm giữa các dòng mô hình; và (4) Bản chất hiện tượng vật lý phát hiện được.</em>
+  Nhằm giải quyết triệt để bài toán dịch chuyển phân phối (Sim-to-Real Domain Shift) từ mô phỏng phần tử hữu hạn (FEM) sang tín hiệu cảm biến dòng xoáy thực tế 5 kHz, nghiên cứu đã xây dựng, tối ưu và kiểm định độc lập <strong>13 phương pháp thích ứng miền</strong>. Dưới đây là phân tích chi tiết từng phương pháp với <strong>công thức toán học được chuẩn hóa hiển thị rõ ràng</strong>, chú thích chi tiết từng biến số, quy trình lấy mẫu và bảng số liệu thực nghiệm đối sánh giữa các dòng mô hình.
 </p>
 
 <!-- ========================================================================= -->
@@ -272,13 +324,29 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #64748b;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.1 Phương Pháp 1: Source-Only Zero-Shot Direct (Chuyển Giao Trực Tiếp Không Hiệu Chỉnh)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Mô hình nạp trực tiếp trọng số $\theta_{\text{sim}}$ đã được huấn luyện hội tụ trên dữ liệu mô phỏng FEM (kết hợp phương trình trường thế dipole vi sai). Khi đưa vào môi trường thực nghiệm, mô hình thực hiện suy luận thuần túy (Inference Only) mà không cập nhật bất kỳ trọng số nào ($0\%$ tham số được mở khóa). Không có gradient hay hàm tối ưu nào được kích hoạt trong pha này.
+  <p><strong>A. Bản chất kỹ thuật & Công thức vận hành:</strong><br>
+  Mô hình nạp trực tiếp bộ trọng số đã được huấn luyện tối ưu trên dữ liệu mô phỏng FEM. Trong pha này, mô hình thực hiện suy luận thuần túy (Inference Only), đóng băng tuyệt đối toàn bộ 100% tham số mạng, không cập nhật bất kỳ gradient nào.
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>[ŷ<sub>shape</sub>, (Ŵ, L̂, D̂)] = f<sub>θ_sim</sub>(X<sub>real</sub>), &nbsp;&nbsp;&nbsp; với &nbsp; ∇<sub>θ</sub> ℒ ≡ 0</span>
+      <span class="eq-no">(Công thức 2.1)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Chú thích chi tiết các đại lượng:</strong>
+      <ul>
+        <li><span class="var">X<sub>real</sub> ∈ ℝ<sup>2 × 32 × 32</sup></span>: Ma trận ảnh quét tín hiệu vi sai thực tế 5 kHz (kênh 0: thành phần thực Real, kênh 1: thành phần ảo Imaginary).</li>
+        <li><span class="var">θ<sub>sim</sub></span>: Tập trọng số mạng nơ-ron được tiền huấn luyện trên 1000 mẫu mô phỏng phần tử hữu hạn (COMSOL/FEM).</li>
+        <li><span class="var">ŷ<sub>shape</sub> ∈ ℝ<sup>5</sup></span>: Vector phân bố xác suất Softmax trên 5 dạng khuyết tật (Circ, Crack, Step_R, Step_T, Unknown).</li>
+        <li><span class="var">(Ŵ, L̂, D̂)</span>: Giá trị dự đoán 3 chiều hình học thực tế (Chiều rộng, Chiều dài, Độ sâu).</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  &bull; <em>Tập huấn luyện (Train):</em> $0$ mẫu thực tế (chỉ dùng $1000$ mẫu mô phỏng số ban đầu).<br>
-  &bull; <em>Tập kiểm thử (Test):</em> Toàn bộ $20$ mẫu quét thực tế 5 kHz ($10$ phôi $\times$ $2$ lượt quét A và B).
+  &bull; <em>Tập huấn luyện (Train):</em> 0 mẫu thực tế (không học từ miền đích).<br>
+  &bull; <em>Tập kiểm thử (Test):</em> Toàn bộ 20 mẫu quét thực tế 5 kHz (10 phôi × 2 lượt quét A và B).
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm giữa các dòng mô hình:</strong></p>
@@ -289,15 +357,15 @@
         <th>Trọng Số Cập Nhật</th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE $W$ (mm)</th>
-        <th>MAE $L$ (mm)</th>
-        <th>MAE $D$ (mm)</th>
+        <th>MAE <i>W</i> (mm)</th>
+        <th>MAE <i>L</i> (mm)</th>
+        <th>MAE <i>D</i> (mm)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN (Base 5% Data)</strong></td>
-        <td>$0\%$ (Frozen)</td>
+        <td>0% (Frozen)</td>
         <td>19.47%</td>
         <td>1.432 mm</td>
         <td>0.820 mm</td>
@@ -306,7 +374,7 @@
       </tr>
       <tr>
         <td><strong>CNN Baseline (NoPINN)</strong></td>
-        <td>$0\%$ (Frozen)</td>
+        <td>0% (Frozen)</td>
         <td>19.47%</td>
         <td>1.455 mm</td>
         <td>0.835 mm</td>
@@ -315,7 +383,7 @@
       </tr>
       <tr>
         <td><strong>Multitask MLP PINN (1D)</strong></td>
-        <td>$0\%$ (Frozen)</td>
+        <td>0% (Frozen)</td>
         <td>12.50%</td>
         <td>4.502 mm</td>
         <td>1.250 mm</td>
@@ -324,7 +392,7 @@
       </tr>
       <tr>
         <td><strong>Xiong et al. MLP (Single-Task Reg)</strong></td>
-        <td>$0\%$ (Frozen)</td>
+        <td>0% (Frozen)</td>
         <td><strong>N/A*</strong> <span style="font-size:7pt;color:#64748b;">(17.5% aux)</span></td>
         <td>619.90 mm</td>
         <td>1.700 mm</td>
@@ -335,7 +403,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>Sụp đổ dịch chuyển miền (Domain Shift Collapse):</em> Độ chính xác tụt xuống mức ngẫu nhiên ($12.5\% - 19.5\%$ trên 5 lớp, tiệm cận mức đoán mò $20\%$). Nguyên nhân do tín hiệu thực nghiệm bị lệch điện áp không tải (DC offset), trôi dạt đường zero vi sai và rung chấn cơ khí đầu dò, khiến ma trận điện áp thực tế nằm ngoài miền bao lồi (convex hull) của dữ liệu mô phỏng.
+  <em>Sụp đổ dịch chuyển miền (Domain Shift Collapse):</em> Độ chính xác tụt xuống mức ngẫu nhiên (12.5% – 19.5% trên 5 lớp, xấp xỉ xác suất đoán mò 1/5 = 20%). Nguyên nhân do tín hiệu thực nghiệm bị lệch điện áp không tải (DC offset) và rung chấn đầu dò, khiến ma trận điện áp thực tế nằm ngoài miền bao lồi (convex hull) của dữ liệu mô phỏng.
   </p>
 </div>
 
@@ -344,16 +412,30 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #64748b;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.2 Phương Pháp 2: Real-Only Supervised Scratch (Huấn Luyện Từ Đầu Thuần Dữ Liệu Thực)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Bỏ qua hoàn toàn kho tri thức mô phỏng và nghiệm giải tích Maxwell. Khởi tạo ngẫu nhiên toàn bộ trọng số (Kaiming Normal Initialization). Mạng được tối ưu hóa có giám sát trực tiếp trên các mẫu thực tế bằng hàm tổn thất đa tác vụ kết hợp:
-  $$\mathcal{L} = \mathcal{L}_{\text{CE}}(\hat{y}_{\text{shape}}, y_{\text{shape}}) + \lambda_{\text{wld}} \text{MSE}(\hat{y}_{\text{wld}}, y_{\text{wld}})$$
-  Toàn bộ $100\%$ tham số mạng (Backbone + 2 Heads) đều được cập nhật gradient với tốc độ học $\eta = 10^{-3}$, $100$ epochs.
+  <p><strong>A. Bản chất kỹ thuật & Công thức hàm mất mát:</strong><br>
+  Bỏ qua toàn bộ dữ liệu mô phỏng. Khởi tạo ngẫu nhiên toàn bộ trọng số mạng nơ-ron (Kaiming Normal). Mạng được tối ưu hóa có giám sát trực tiếp trên tập mẫu thực nghiệm qua hàm tổn thất đa nhiệm:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>scratch</sub> = -∑<sub>c=1</sub><sup>C</sup> y<sub>c</sub> · log(p̂<sub>c</sub>) + (λ<sub>wld</sub> / 3) · ∑<sub>k∈{W,L,D}</sub> ((k̂ - k) / σ<sub>k</sub>)<sup>2</sup></span>
+      <span class="eq-no">(Công thức 2.2)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Chú thích chi tiết các đại lượng:</strong>
+      <ul>
+        <li><span class="var">y<sub>c</sub> ∈ {0, 1}</span>: Nhãn one-hot biểu diễn hình dạng thực tế của khuyết tật (C = 5 lớp).</li>
+        <li><span class="var">p̂<sub>c</sub> = exp(z<sub>c</sub>) / ∑<sub>j</sub> exp(z<sub>j</sub>)</span>: Xác suất Softmax dự đoán của lớp thứ c từ đầu phân loại.</li>
+        <li><span class="var">σ<sub>W</sub>, σ<sub>L</sub>, σ<sub>D</sub></span>: Độ lệch chuẩn của từng chiều kích thước dùng để chuẩn hóa không thứ nguyên sai số hình học.</li>
+        <li><span class="var">λ<sub>wld</sub> = 1.0</span>: Hệ số cân bằng giữa tác vụ phân loại biên dạng và tác vụ hồi quy kích thước. Mở khóa 100% tham số mạng.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   Giao thức <strong>10-Fold Leave-One-Defect-Out (LODO)</strong>:
-  &bull; Trong mỗi Fold: $18$ mẫu thực nghiệm (từ $9$ phôi) được dùng để huấn luyện.<br>
-  &bull; $2$ mẫu thực nghiệm (gồm cả lượt quét A và B của phôi thứ 10 bị cô lập) được dùng làm tập kiểm tra mù (Blind Test). Xoay vòng 10 lần.
+  &bull; Trong mỗi Fold: 18 mẫu thực nghiệm (từ 9 phôi) được dùng để huấn luyện.<br>
+  &bull; 2 mẫu thực nghiệm (cả lượt quét A và B của phôi thứ 10 bị rút ra) làm tập kiểm tra mù (Blind Test). Xoay vòng 10 lần.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm giữa các dòng mô hình:</strong></p>
@@ -364,15 +446,15 @@
         <th>Tỷ Lệ Mở Khóa</th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE $W$ (mm)</th>
-        <th>MAE $L$ (mm)</th>
-        <th>MAE $D$ (mm)</th>
+        <th>MAE <i>W</i> (mm)</th>
+        <th>MAE <i>L</i> (mm)</th>
+        <th>MAE <i>D</i> (mm)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN (ImprovedMultimodelNet)</strong></td>
-        <td>$100\%$ (Full Train)</td>
+        <td>100% (Full Train)</td>
         <td>42.11%</td>
         <td>1.402 mm</td>
         <td>0.201 mm</td>
@@ -381,7 +463,7 @@
       </tr>
       <tr>
         <td><strong>Multitask MLP (1D)</strong></td>
-        <td>$100\%$ (Full Train)</td>
+        <td>100% (Full Train)</td>
         <td>44.17%</td>
         <td>1.334 mm</td>
         <td>0.204 mm</td>
@@ -390,7 +472,7 @@
       </tr>
       <tr>
         <td><strong>Xiong et al. MLP (Single-Task Reg)</strong></td>
-        <td>$100\%$ (Full Train)</td>
+        <td>100% (Full Train)</td>
         <td><strong>N/A*</strong> <span style="font-size:7pt;color:#64748b;">(42.1% aux)</span></td>
         <td>1.381 mm</td>
         <td>0.202 mm</td>
@@ -401,7 +483,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>Bẫy thiếu khớp dữ liệu nhỏ (Small-Sample Underfitting Trap):</em> Với kích thước tập dữ liệu chỉ $N=18$ mẫu trong mỗi fold, không gian tham số hàng triệu bậc tự do của CNN không thể hội tụ về nghiệm tổng quát. Sai số chiều dài $L$ lên tới $2.85$ mm, khẳng định việc tiền huấn luyện trên mô phỏng (Sim-to-Real) là điều kiện sống còn đối với bài toán kiểm tra dòng xoáy.
+  <em>Bẫy thiếu khớp dữ liệu nhỏ (Small-Sample Underfitting Trap):</em> Với số lượng mẫu chỉ <i>N</i> = 18 mẫu trong mỗi fold, không gian tham số hàng triệu bậc tự do của CNN không thể hội tụ về nghiệm tổng quát. Sai số chiều dài <i>L</i> lên tới 2.85 mm, chứng minh tiền huấn luyện Sim-to-Real là bắt buộc trong ECT.
   </p>
 </div>
 
@@ -409,14 +491,27 @@
 <!-- METHOD 3 -->
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #0284c7;">
-  <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.3 Phương Pháp 3: Standard Few-Shot PEFT (Thích Ứng Tham Số Cổ Điển - Khóa Toàn Bộ Backbone)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Áp dụng chiến lược Parameter-Efficient Fine-Tuning (PEFT) truyền thống: Đóng băng tuyệt đối $100\%$ các tầng trích xuất đặc trưng tích chập (Backbone Conv2D) bằng cách đặt <code>requires_grad = False</code>. Chỉ mở khóa các tầng tuyến tính cuối cùng của bộ phân loại (Classifier) và bộ hồi quy (Regression Head), tối ưu bằng AdamW trong 50 epochs:
-  $$\mathcal{L}_{\text{PEFT}} = \mathcal{L}_{\text{CE}}(\hat{y}_{\text{shape}}, y_{\text{shape}}) + \text{MSE}(\hat{y}_{\text{wld}}, y_{\text{wld}})$$
+  <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.3 Phương Pháp 3: Standard Few-Shot PEFT (Thích Ứng Cổ Điển - Khóa Toàn Bộ Backbone)</h3>
+  <p><strong>A. Bản chất kỹ thuật & Công thức thích ứng:</strong><br>
+  Áp dụng chiến lược Parameter-Efficient Fine-Tuning (PEFT) truyền thống: Đóng băng tuyệt đối 100% các tầng trích xuất đặc trưng tích chập (Backbone Conv2D) bằng cách đặt <code>requires_grad = False</code>. Chỉ mở khóa các tầng tuyến tính cuối cùng của bộ phân loại và bộ hồi quy:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>PEFT</sub> = ℒ<sub>CE</sub>(ŷ<sub>shape</sub>, y) + MSE(ŷ<sub>wld</sub>, y<sub>wld</sub>), &nbsp;&nbsp;&nbsp; với &nbsp; ∇<sub>θ_backbone</sub> ℒ ≡ 0</span>
+      <span class="eq-no">(Công thức 2.3)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Cơ chế cập nhật gradient:</strong>
+      <ul>
+        <li><span class="var">θ<sub>heads</sub> ← θ<sub>heads</sub> - η · ∇<sub>θ_heads</sub> ℒ<sub>PEFT</sub></span>: Chỉ có 1.8% tổng số tham số (các ma trận Fully Connected cuối cùng) được tối ưu bằng thuật toán AdamW (<i>η</i> = 5 × 10⁻⁴).</li>
+        <li><span class="var">θ<sub>backbone</sub> = const</span>: Trọng số các bộ lọc tích chập giữ nguyên như khi học trên mô phỏng FEM.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  Đánh giá trên <strong>10-Fold LODO</strong>: $18$ mẫu huấn luyện đầu ra, $2$ mẫu phôi lạ hoàn toàn kiểm thử cô lập.
+  Đánh giá trên <strong>10-Fold LODO</strong>: 18 mẫu huấn luyện đầu ra, 2 mẫu phôi lạ hoàn toàn kiểm thử cô lập.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm giữa các dòng mô hình:</strong></p>
@@ -427,15 +522,15 @@
         <th>Cấu Trúc Tinh Chỉnh</th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE $W$ (mm)</th>
-        <th>MAE $L$ (mm)</th>
-        <th>MAE $D$ (mm)</th>
+        <th>MAE <i>W</i> (mm)</th>
+        <th>MAE <i>L</i> (mm)</th>
+        <th>MAE <i>D</i> (mm)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN (Base 5% Data)</strong></td>
-        <td>Chỉ Heads ($1.8\%$ tham số)</td>
+        <td>Chỉ Heads (1.8% tham số)</td>
         <td>30.0%</td>
         <td>0.770 mm</td>
         <td>0.180 mm</td>
@@ -444,7 +539,7 @@
       </tr>
       <tr style="background:#fef3c7;">
         <td><strong>CNN Baseline (NoPINN)</strong></td>
-        <td>Chỉ Heads ($1.8\%$ tham số)</td>
+        <td>Chỉ Heads (1.8% tham số)</td>
         <td><strong>50.0%</strong></td>
         <td><strong>0.613 mm</strong></td>
         <td>0.120 mm</td>
@@ -453,7 +548,7 @@
       </tr>
       <tr>
         <td><strong>Multitask MLP PINN (1D)</strong></td>
-        <td>Chỉ Heads ($2.4\%$ tham số)</td>
+        <td>Chỉ Heads (2.4% tham số)</td>
         <td>12.5%</td>
         <td>4.041 mm</td>
         <td>0.201 mm</td>
@@ -462,7 +557,7 @@
       </tr>
       <tr>
         <td><strong>Xiong et al. MLP (Single-Task Reg)</strong></td>
-        <td>Chỉ Reg Head ($1.2\%$ tham số)</td>
+        <td>Chỉ Reg Head (1.2% tham số)</td>
         <td><strong>N/A*</strong> <span style="font-size:7pt;color:#64748b;">(18.3% aux)</span></td>
         <td>618.63 mm</td>
         <td>1.320 mm</td>
@@ -473,7 +568,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>Nghịch lý xương sống đông cứng (Rigid Backbone Paradox):</em> NoPINN bất ngờ chiến thắng PINN (50% vs 30%). Lý do: Các bộ lọc của PINN bị khóa cứng vào nghiệm giải tích đối xứng hoàn hảo của mô phỏng, mất hoàn toàn tính mềm dẻo để hấp thụ sai lệch pha và trôi đường nền thực tế. Trong khi đó, không gian ẩn của NoPINN lỏng lẻo hơn nên các tầng đầu ra dễ uốn nắn theo 18 mẫu thực tế.
+  <em>Nghịch lý xương sống đông cứng (Rigid Backbone Paradox):</em> NoPINN bất ngờ vượt qua PINN (50% vs 30%). Nguyên nhân: Các bộ lọc của PINN bị khóa cứng vào nghiệm giải tích đối xứng hoàn hảo của mô phỏng, mất hoàn toàn tính mềm dẻo để hấp thụ sai lệch pha và trôi đường nền thực tế. Không gian ẩn của NoPINN lỏng lẻo hơn nên các tầng đầu ra dễ uốn nắn theo 18 mẫu thực tế.
   </p>
 </div>
 
@@ -482,11 +577,23 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #f59e0b;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.4 Phương Pháp 4: Calibrated PEFT (Hiệu Chuẩn Đường Nền Tín Hiệu + Khóa Backbone)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Nhằm khắc phục trôi dạt DC của cảm biến, thuật toán áp dụng cơ chế <em>Border Quartile Baseline Nulling</em>: Trích xuất điện áp tại 4 góc biên của ảnh vi sai (nơi không có từ trường dòng xoáy khuyết tật) để tính điện áp lệch $\Delta V_0$, sau đó chuẩn hóa:
-  $$\tilde{V}(x, y) = V(x, y) - \frac{1}{|\Omega_{\text{border}}|} \sum_{(u, v) \in \Omega_{\text{border}}} V(u, v)$$
-  Sau khi làm sạch tín hiệu, tiến hành huấn luyện PEFT khóa Backbone.
+  <p><strong>A. Bản chất kỹ thuật & Công thức lọc tín hiệu:</strong><br>
+  Áp dụng thuật toán khử trôi dạt <em>Border Quartile Baseline Nulling</em> trước khi đưa tín hiệu vào mạng PEFT:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>Ṽ(x, y) = V(x, y) - (1 / |Ω<sub>border</sub>|) · ∑<sub>(u, v) ∈ Ω<sub>border</sub></sub> V(u, v)</span>
+      <span class="eq-no">(Công thức 2.4)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Quy tắc xác định vùng biên khử lệch áp không tải:</strong>
+      <ul>
+        <li><span class="var">Ω<sub>border</sub> = {(u, v) ∣ u ≤ 4 	ext{ hoặc } u ≥ 28, v ≤ 4 	ext{ hoặc } v ≥ 28}</span>: Tập hợp các điểm quét ở 4 dải biên ngoài rìa cuộn cảm biến ECT vi sai (vùng không bị nhiễu loạn bởi dòng xoáy khuyết tật).</li>
+        <li><span class="var">Ṽ(x, y)</span>: Tín hiệu điện áp vi sai chuẩn hóa đã triệt tiêu hoàn toàn thành phần điện áp DC offset trước khi đưa qua hàm mất mát ℒ<sub>PEFT</sub>.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   Giao thức 10-Fold LODO trên tín hiệu đã hiệu chuẩn khử offset.
@@ -500,14 +607,14 @@
         <th>Tiền Xử Lý Tín Hiệu</th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Đánh Giá Kỹ Thuật</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN (Base 5%)</strong></td>
-        <td>Border Nulling + Gaussian $\sigma=0.5$</td>
+        <td>Border Nulling + Gaussian <i>σ</i> = 0.5</td>
         <td>25.0%</td>
         <td>0.739 mm</td>
         <td>0.991 mm</td>
@@ -515,7 +622,7 @@
       </tr>
       <tr>
         <td><strong>CNN Baseline (NoPINN)</strong></td>
-        <td>Border Nulling + Gaussian $\sigma=0.5$</td>
+        <td>Border Nulling + Gaussian <i>σ</i> = 0.5</td>
         <td>40.0%</td>
         <td>0.580 mm</td>
         <td>0.810 mm</td>
@@ -534,14 +641,27 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #7570b3;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.5 Phương Pháp 5: Domain Transfer MMD (Căn Chỉnh Miền Đa Nhân RBF)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Áp dụng khoảng cách Maximum Mean Discrepancy (MMD) với nhân hỗn hợp Gauss đa tỷ lệ $\mathcal{K} = \sum_{m=1}^5 k_{\sigma_m}$ nhằm kéo sát phân phối tiềm ẩn của miền mô phỏng $\mathcal{P}_S$ và miền thực tế $\mathcal{P}_T$. Cập nhật đồng thời toàn bộ Backbone và Heads:
-  $$\mathcal{L} = \mathcal{L}_{\text{task}} + \beta \text{MMD}^2(F_S, F_T)$$
-  $$\text{MMD}^2(F_S, F_T) = \mathbb{E}[k(x_s, x_s')] - 2\mathbb{E}[k(x_s, x_t)] + \mathbb{E}[k(x_t, x_t')]$$
+  <p><strong>A. Bản chất kỹ thuật & Công thức căn chỉnh phân phối MMD:</strong><br>
+  Kéo sát phân phối tiềm ẩn giữa miền mô phỏng 𝒫<sub>S</sub> và miền thực tế 𝒫<sub>T</sub> trong không gian Hilbert tái tạo (RKHS) thông qua hàm mất mát Maximum Mean Discrepancy đa nhân Gauss:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>MMD</sub> = ℒ<sub>task</sub> + β · MMD<sup>2</sup>(F<sub>sim</sub>, F<sub>real</sub>), &nbsp;&nbsp;&nbsp; với &nbsp; k(x, y) = ∑<sub>m=1</sub><sup>5</sup> exp(-||x - y||<sup>2</sup> / 2σ<sub>m</sub><sup>2</sup>)</span>
+      <span class="eq-no">(Công thức 2.5)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Công thức tường minh của khoảng cách MMD:</strong>
+      <ul>
+        <li><span class="var">MMD<sup>2</sup> = (1/N<sub>s</sub><sup>2</sup>) ∑ k(x<sub>s</sub><sup>(i)</sup>, x<sub>s</sub><sup>(j)</sup>) - (2/N<sub>s</sub>N<sub>t</sub>) ∑ k(x<sub>s</sub><sup>(i)</sup>, x<sub>t</sub><sup>(j)</sup>) + (1/N<sub>t</sub><sup>2</sup>) ∑ k(x<sub>t</sub><sup>(i)</sup>, x<sub>t</sub><sup>(j)</sup>)</span>.</li>
+        <li><span class="var">σ<sub>m</sub> ∈ {1.0, 2.0, 4.0, 8.0, 16.0}</span>: Dải 5 độ rộng nhân Gaussian giúp bao quát đồng thời các biến động vi mô lẫn vĩ mô.</li>
+        <li><span class="var">β = 0.25</span>: Trọng số cân bằng tổn thất miền MMD. Cập nhật cả Backbone và Heads.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  Cặp batch song song: Mỗi bước tối ưu bốc ngẫu nhiên $16$ mẫu mô phỏng và $16$ mẫu thực nghiệm từ tập Train của từng Fold LODO.
+  Cặp batch song song: Mỗi bước tối ưu bốc ngẫu nhiên 16 mẫu mô phỏng và 16 mẫu thực nghiệm từ tập Train của từng Fold LODO.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm giữa các dòng mô hình:</strong></p>
@@ -552,7 +672,7 @@
         <th>Cơ Chế Căn Chỉnh</th>
         <th>Accuracy Trung Bình</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Nhận Định Kỹ Thuật</th>
       </tr>
     </thead>
@@ -585,7 +705,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  MMD giúp đưa CNN vượt mốc 50% Acc. Tuy nhiên, việc ép phân phối toàn cục (Global Alignment) vô tình làm xô lệch các đặc trưng định hướng lưỡng cực (Dipole orientation), dẫn đến sai số chiều dài $L$ vẫn còn lớn ($0.90$ mm).
+  MMD giúp đưa CNN vượt mốc 50% Acc. Tuy nhiên, việc ép phân phối toàn cục (Global Alignment) vô tình làm xô lệch các đặc trưng định hướng lưỡng cực (Dipole orientation), dẫn đến sai số chiều dài <i>L</i> vẫn còn lớn (0.90 mm).
   </p>
 </div>
 
@@ -594,13 +714,27 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #dc2626;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.6 Phương Pháp 6: DANN Adversarial UDA (Mạng Đối Kháng Với Tầng Đảo Gradient GRL)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Mô hình hóa theo mạng thích ứng đối kháng miền (Ganin et al.): Thêm một nhánh phân biệt miền (Domain Discriminator $D$) kết nối qua tầng Gradient Reversal Layer (GRL). Trong khi bộ phân biệt cố gắng nhận diện nguồn gốc mẫu (Mô phỏng vs Thực tế), Backbone cố gắng tạo ra các đặc trưng đánh lừa bộ phân biệt:
-  $$\mathcal{L}_{\text{DANN}} = \mathcal{L}_{\text{task}}(\theta_f, \theta_y) - \lambda_{\text{domain}} \mathcal{L}_{d}(D(GRL_{\lambda}(\theta_f(x))), d)$$
+  <p><strong>A. Bản chất kỹ thuật & Công thức đối kháng min-max:</strong><br>
+  Thêm một đầu phân biệt miền (Domain Discriminator <i>D</i>) kết nối qua tầng Gradient Reversal Layer (GRL). Trong khi bộ phân biệt cố gắng nhận diện nguồn gốc mẫu (Mô phỏng vs Thực tế), Backbone cố gắng tạo ra các đặc trưng đánh lừa bộ phân biệt:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>DANN</sub>(θ<sub>f</sub>, θ<sub>y</sub>, θ<sub>d</sub>) = ℒ<sub>task</sub>(θ<sub>f</sub>, θ<sub>y</sub>) - λ<sub>d</sub> · ℒ<sub>domain</sub>(D(GRL<sub>λ</sub>(θ<sub>f</sub>(X))), d)</span>
+      <span class="eq-no">(Công thức 2.6)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Quy luật đảo ngược đạo hàm (Gradient Reversal Layer):</strong>
+      <ul>
+        <li><span class="var">GRL<sub>λ</sub>(z) = z</span> ở pha lan truyền xuôi (Forward Pass).</li>
+        <li><span class="var">(∂GRL<sub>λ</sub> / ∂z) = -λ · I</span> ở pha lan truyền ngược (Backward Pass), ép Backbone học đặc trưng bất biến theo miền.</li>
+        <li><span class="var">λ<sub>d</sub> = (2 / (1 + exp(-10 · p))) - 1</span>: Lịch trình thích ứng động tăng dần theo tỷ lệ tiến trình epoch <i>p</i> ∈ [0, 1].</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  Huấn luyện Unsupervised DA: $1000$ mẫu Source có nhãn + $18$ mẫu Target không nhãn trong mỗi Fold LODO.
+  Huấn luyện Unsupervised DA: 1000 mẫu Source có nhãn + 18 mẫu Target không nhãn trong mỗi Fold LODO.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm giữa các dòng mô hình:</strong></p>
@@ -608,17 +742,17 @@
     <thead>
       <tr>
         <th>Mô Hình Thực Nghiệm</th>
-        <th>Hệ Số Đối Kháng $\lambda_d$</th>
+        <th>Hệ Số Đối Kháng <i>λ</i><sub>d</sub></th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Đánh Giá Kỹ Thuật</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN Base</strong></td>
-        <td>$\lambda_d = 0.1 \to 1.0$ (Dynamic Schedule)</td>
+        <td><i>λ</i><sub>d</sub> = 0.1 → 1.0 (Dynamic Schedule)</td>
         <td>30.0%</td>
         <td>0.879 mm</td>
         <td>1.544 mm</td>
@@ -626,7 +760,7 @@
       </tr>
       <tr>
         <td><strong>CNN Baseline (NoPINN)</strong></td>
-        <td>$\lambda_d = 0.1 \to 1.0$ (Dynamic Schedule)</td>
+        <td><i>λ</i><sub>d</sub> = 0.1 → 1.0 (Dynamic Schedule)</td>
         <td>35.0%</td>
         <td>0.750 mm</td>
         <td>1.250 mm</td>
@@ -636,7 +770,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>Sụp đổ huấn luyện đối kháng trên mẫu cực nhỏ (Small-Sample Adversarial Collapse):</em> Số lượng mẫu thực quá ít ($N=18$) khiến bộ phân biệt miền đạt trạng thái bão hòa quá nhanh, tạo ra gradient nhiễu triệt tiêu các đặc trưng hình học quan trọng của vết nứt.
+  <em>Sụp đổ huấn luyện đối kháng trên mẫu cực nhỏ (Small-Sample Adversarial Collapse):</em> Số lượng mẫu thực quá ít (<i>N</i> = 18) khiến bộ phân biệt miền đạt trạng thái bão hòa quá nhanh, tạo ra gradient nhiễu triệt tiêu các đặc trưng hình học quan trọng của vết nứt.
   </p>
 </div>
 
@@ -645,11 +779,24 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #10b981;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.7 Phương Pháp 7: PI-LoRA Conv Thô (Rank 4, Chưa Hiệu Chuẩn Đường Nền)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Bước đột phá giải quyết "nghịch lý xương sống đông cứng": Giữ nguyên trọng số gốc $W_0 \in \mathbb{R}^{C_{\text{out}} \times C_{\text{in}} \times k \times k}$ của các tầng tích chập Conv2D, tiêm thêm nhánh ma trận hạng thấp $A \in \mathbb{R}^{r \times C_{\text{in}} \cdot k \cdot k}$ và $B \in \mathbb{R}^{C_{\text{out}} \times r}$ với $r=4, \alpha_{\text{lora}}=8.0$:
-  $$W = W_0 + \frac{\alpha_{\text{lora}}}{r} (B \cdot A)$$
-  Chỉ cập nhật $A, B$ và Heads ($< 2\%$ tham số), tối ưu bằng AdamW trong 70 epochs.
+  <p><strong>A. Bản chất kỹ thuật & Công thức phân rã LoRA:</strong><br>
+  Đóng băng hoàn toàn trọng số gốc <b>W</b><sub>0</sub> ∈ ℝ<sup>C<sub>out</sub> × C<sub>in</sub> × k × k</sup> của các tầng tích chập Conv2D, tiêm thêm nhánh thích ứng ma trận tích hạng thấp:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>W<sub>conv</sub> = W<sub>0</sub> + ΔW = W<sub>0</sub> + (α<sub>lora</sub> / r) · (B · A), &nbsp;&nbsp;&nbsp; với &nbsp; r = 4, &nbsp; α<sub>lora</sub> = 8.0</span>
+      <span class="eq-no">(Công thức 2.7)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Kích thước và cơ chế cập nhật ma trận thích ứng:</strong>
+      <ul>
+        <li><span class="var">A ∈ ℝ<sup>r × (C<sub>in</sub> · k<sup>2</sup>)</sup></span>: Khởi tạo theo phân bố chuẩn Gauss 𝒩(0, <i>σ</i>²).</li>
+        <li><span class="var">B ∈ ℝ<sup>C<sub>out</sub> × r</sup></span>: Khởi tạo bằng 0, đảm bảo tại <i>t</i> = 0 mô hình giữ nguyên 100% tri thức ban đầu: Δ<b>W</b> = 0.</li>
+        <li>Chỉ cập nhật <i>A, B</i> và Heads (&lt; 2% tổng số tham số mạng), đóng băng vĩnh viễn <b>W</b><sub>0</sub>.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   10-Fold LODO trên dữ liệu thực tế thô (chưa qua lọc tín hiệu).
@@ -660,17 +807,17 @@
     <thead>
       <tr>
         <th>Dòng Kiến Trúc Mô Hình</th>
-        <th>Hạng LoRA ($r$)</th>
+        <th>Hạng LoRA (<i>r</i>)</th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Bước Nhảy Vọt Kỹ Thuật</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN (Base 5%)</strong></td>
-        <td>$r=4$</td>
+        <td><i>r</i> = 4</td>
         <td>45.0%</td>
         <td><strong>0.538 mm</strong></td>
         <td><strong>0.524 mm</strong></td>
@@ -678,7 +825,7 @@
       </tr>
       <tr>
         <td><strong>CNN Baseline (NoPINN)</strong></td>
-        <td>$r=4$</td>
+        <td><i>r</i> = 4</td>
         <td>45.0%</td>
         <td>0.590 mm</td>
         <td>0.610 mm</td>
@@ -688,7 +835,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  LoRA cho phép mạng tinh chỉnh các đặc trưng tần số thấp của cảm biến thực mà không phá hủy cấu trúc trường thế từ cấp cao đã học. Sai số chiều dài $L$ giảm một nửa (từ 0.99 mm xuống 0.52 mm).
+  LoRA cho phép mạng tinh chỉnh các đặc trưng tần số thấp của cảm biến thực mà không phá hủy cấu trúc trường thế từ cấp cao đã học. Sai số chiều dài <i>L</i> giảm một nửa (từ 0.99 mm xuống 0.52 mm).
   </p>
 </div>
 
@@ -697,13 +844,26 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #dc2626;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.8 Phương Pháp 8: Source Replay Co-training (Đồng Huấn Luyện Trộn Mẫu Mô Phỏng)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Nhằm chống hiện tượng quên kiến thức mô phỏng, mỗi batch huấn luyện trong pha thích ứng được trộn $80\%$ mẫu mô phỏng FEM và $20\%$ mẫu thực tế. Hàm tổn thất là tổng trọng số tổn thất trên cả hai miền:
-  $$\mathcal{L} = \mathcal{L}_{\text{real}} + \gamma_{\text{sim}} \mathcal{L}_{\text{sim}}$$
+  <p><strong>A. Bản chất kỹ thuật & Công thức đồng huấn luyện:</strong><br>
+  Mỗi mini-batch huấn luyện trong pha thích ứng được trộn 80% mẫu mô phỏng và 20% mẫu thực tế nhằm ép mạng không quên tri thức vật lý:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>co-train</sub> = ℒ<sub>real</sub>(X<sub>real</sub>, y<sub>real</sub>) + γ<sub>sim</sub> · ℒ<sub>sim</sub>(X<sub>sim</sub>, y<sub>sim</sub>), &nbsp;&nbsp;&nbsp; với &nbsp; γ<sub>sim</sub> = 0.5</span>
+      <span class="eq-no">(Công thức 2.8)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Cơ cấu chia tỷ lệ mini-batch:</strong>
+      <ul>
+        <li><span class="var">B<sub>real</sub> = 4, &nbsp; B<sub>sim</sub> = 16</span>: Tỷ lệ trộn mẫu thực và mẫu mô phỏng trong mỗi bước cập nhật trọng số.</li>
+        <li><span class="var">γ<sub>sim</sub></span>: Hệ số suy giảm tác động của hàm tổn thất mô phỏng.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  10-Fold LODO kết hợp replay bộ nhớ đệm từ $1000$ mẫu mô phỏng.
+  10-Fold LODO kết hợp replay bộ nhớ đệm từ 1000 mẫu mô phỏng.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm:</strong></p>
@@ -720,7 +880,7 @@
     <tbody>
       <tr>
         <td><strong>CNN PINN Base</strong></td>
-        <td>$80\%$ Sim / $20\%$ Real</td>
+        <td>80% Sim / 20% Real</td>
         <td>5.0% &ndash; 25.0%</td>
         <td>0.826 mm</td>
         <td>Chuyển giao tiêu cực nặng nề (Negative Transfer)</td>
@@ -738,13 +898,23 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #10b981;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.9 Phương Pháp 9: Physics Symmetry TTA (Tăng Cường Lúc Suy Luận Theo Đối Xứng Gương)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Dựa trên tính chất đối xứng gương không gian của trường từ vi sai trong phương trình Maxwell: Lấy tín hiệu kiểm tra $X$, tạo ra 4 biến thể không gian:
-  $$\mathcal{T}(X) = \{X, \text{Flip}_x(X), \text{Flip}_y(X), \text{Flip}_{xy}(X)\}$$
-  Đưa qua mạng nơ-ron và tổng hợp xác suất thông qua phép lấy trung bình hình học Softmax:
-  $$\bar{p}(y|X) = \frac{1}{4} \sum_{T \in \mathcal{T}} \text{Softmax}(f(T(X)))$$
-  Không cập nhật trọng số (Zero parameter update).
+  <p><strong>A. Bản chất kỹ thuật & Công thức trung bình xác suất:</strong><br>
+  Dựa trên tính chất đối xứng gương không gian của trường từ vi sai trong phương trình Maxwell: Lấy tín hiệu kiểm tra <i>X</i>, tạo ra 4 biến thể không gian:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>p̄(y | X) = (1 / |𝒯|) · ∑<sub>T ∈ 𝒯</sub> Softmax(f(T(X))), &nbsp;&nbsp;&nbsp; 𝒯 = {I, Flip<sub>x</sub>, Flip<sub>y</sub>, Flip<sub>xy</sub>}</span>
+      <span class="eq-no">(Công thức 2.9)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Không gian biến đổi đối xứng trường vi sai:</strong>
+      <ul>
+        <li><span class="var">Flip<sub>x</sub>(X), Flip<sub>y</sub>(X)</span>: Phép lật không gian dọc theo trục quét và trục vuông góc của cuộn vi sai.</li>
+        <li>Không cập nhật tham số (0% trainable weights), tích hợp thuần túy tại thời điểm suy luận (Inference Time).</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   Áp dụng trực tiếp tại thời điểm suy luận (Inference Time) trên toàn bộ các Fold LODO.
@@ -789,13 +959,26 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #0284c7;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.10 Phương Pháp 10: PI-LoRA Anchored (Neo Trọng Số Elastic Weight Anchor Head)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Áp dụng nguyên lý Elastic Weight Consolidation (Kirkpatrick et al.) nhằm bảo tồn hướng chiếu đặc trưng của các lớp khuyết tật hiếm: Bổ sung số hạng ràng buộc $L_2$ phạt độ lệch góc của ma trận trọng số phân loại:
-  $$\mathcal{L}_{\text{anchored}} = \mathcal{L}_{\text{CE}} + \text{MSE} + \frac{\lambda_{\text{anchor}}}{2} \| \theta_{\text{head}} - \theta_{\text{head}}^{(0)} \|_2^2 \quad (\lambda_{\text{anchor}} = 0.5)$$
+  <p><strong>A. Bản chất kỹ thuật & Công thức phạt độ lệch:</strong><br>
+  Bảo tồn hướng chiếu đặc trưng của các lớp khuyết tật hiếm bằng cách phạt khoảng cách Euclidean giữa ma trận trọng số phân loại hiện tại và trọng số gốc ban đầu:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>anchored</sub> = ℒ<sub>CE</sub> + MSE + (λ<sub>anchor</sub> / 2) · ∑<sub>j</sub> ||w<sub>head, j</sub> - w<sub>head, j</sub><sup>(0)</sup>||<sub>2</sub><sup>2</sup></span>
+      <span class="eq-no">(Công thức 2.10)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Cơ chế neo bảo tồn không gian tiềm ẩn:</strong>
+      <ul>
+        <li><span class="var">w<sub>head, j</sub><sup>(0)</sup></span>: Vector trọng số của lớp khuyết tật thứ j học từ mô phỏng FEM.</li>
+        <li><span class="var">λ<sub>anchor</sub> = 0.5</span>: Trọng số ràng buộc neo, ngăn không cho các lớp hiếm (Step_R, Step_T) bị trôi dạt góc chiếu.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
-  10-Fold LODO với trọng số khởi tạo $\theta^{(0)}$ từ mô phỏng FEM.
+  10-Fold LODO với trọng số khởi tạo <b>θ</b><sup>(0)</sup> từ mô phỏng FEM.
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm:</strong></p>
@@ -803,17 +986,17 @@
     <thead>
       <tr>
         <th>Mô Hình Thực Nghiệm</th>
-        <th>Hệ Số Neo $\lambda_{\text{anchor}}$</th>
+        <th>Hệ Số Neo <i>λ</i><sub>anchor</sub></th>
         <th>Accuracy (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Đánh Giá Kỹ Thuật</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><strong>CNN PINN LoRA</strong></td>
-        <td>$\lambda = 0.5$</td>
+        <td><i>λ</i> = 0.5</td>
         <td>40.0%</td>
         <td><strong>0.477 mm</strong></td>
         <td><strong>0.510 mm</strong></td>
@@ -823,7 +1006,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  Neo trọng số giữ sai số kích thước $W, L, D$ rất thấp nhưng lại làm giảm độ linh hoạt của ranh giới phân loại, khiến Accuracy bị chặn ở 40%.
+  Neo trọng số giữ sai số kích thước <i>W</i>, <i>L</i>, <i>D</i> rất thấp nhưng lại làm giảm độ linh hoạt của ranh giới phân loại, khiến Accuracy bị chặn ở 40%.
   </p>
 </div>
 
@@ -832,10 +1015,23 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #64748b;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.11 Phương Pháp 11: PI-NPC (Phân Loại Bằng Tâm Cụm Nguyên Mẫu Vật Lý Trong Không Gian Ẩn)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Loại bỏ hoàn toàn tầng Softmax Linear. Thay vào đó, tính vector trọng tâm đại diện $c_k = \frac{1}{|S_k|} \sum_{x \in S_k} f(x)$ cho từng lớp trong không gian đặc trưng LoRA, sau đó phân loại mẫu kiểm tra $x^*$ bằng khoảng cách Cosine:
-  $$\hat{y} = \arg\max_k \frac{f(x^*) \cdot c_k}{\|f(x^*)\| \|c_k\|}$$
+  <p><strong>A. Bản chất kỹ thuật & Công thức phân loại Cosine:</strong><br>
+  Tính toán vector nguyên mẫu đại diện <b>c</b><sub>k</sub> cho từng lớp khuyết tật trong không gian đặc trưng LoRA, phân loại mẫu kiểm tra <i>x</i>* bằng độ tương đồng Cosine cực đại:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>c<sub>k</sub> = (1 / |S<sub>k</sub>|) · ∑<sub>x ∈ S<sub>k</sub></sub> z(x), &nbsp;&nbsp;&nbsp; ŷ = argmax<sub>k</sub> [ (z(x<sup>*</sup>) · c<sub>k</sub>) / (||z(x<sup>*</sup>)|| · ||c<sub>k</sub>||) ]</span>
+      <span class="eq-no">(Công thức 2.11)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Không gian đặc trưng nguyên mẫu (Prototype Space):</strong>
+      <ul>
+        <li><span class="var">z(x) ∈ ℝ<sup>512</sup></span>: Vector nhúng tiềm ẩn sau các tầng tích chập LoRA Conv2D.</li>
+        <li><span class="var">c<sub>k</sub></span>: Tọa độ tâm cụm của lớp khuyết tật thứ k. Loại bỏ hoàn toàn tầng Softmax Linear.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   10-Fold LODO: Trọng tâm được cập nhật theo trung bình trượt của 18 mẫu Train.
@@ -872,14 +1068,24 @@
 <!-- METHOD 12 -->
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #10b981; background:#f0fdf4;">
-  <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.12 Phương Pháp 12: Calibrated PI-LoRA (Ghép Hiệu Chuẩn Tín Hiệu + LoRA Conv + Bảo Toàn Thể Tích &minus; Đột Phá Lần 1)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Sự kết hợp hoàn hảo giữa tiền xử lý tín hiệu và ràng buộc vật lý trong hàm mất mát:
-  1. <em>Lọc tín hiệu:</em> Khử trôi dạt đường zero (Border Nulling) kết hợp lọc nhiễu dao động cơ học đầu dò (Spatial Gaussian Filter $\sigma=0.5$).<br>
-  2. <em>Thích ứng cấu trúc:</em> Tiêm LoRA Conv2D ($r=4, \alpha_{\text{lora}}=8.0$) vào toàn bộ các tầng tích chập.<br>
-  3. <em>Hàm mất mát bảo toàn thể tích điện từ:</em>
-  $$\mathcal{L} = \mathcal{L}_{\text{CE}} + \lambda_{\text{reg}} \text{MSE} + \lambda_{\text{vol}} \left| \hat{W} \cdot \hat{L} \cdot \hat{D} - W_{\text{true}} \cdot L_{\text{true}} \cdot D_{\text{true}} \right|^2$$
+  <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.12 Phương Pháp 12: Calibrated PI-LoRA (Hiệu Chuẩn + LoRA Conv + Bảo Toàn Thể Tích &minus; Đột Phá Lần 1)</h3>
+  <p><strong>A. Bản chất kỹ thuật & Công thức bảo toàn thể tích điện từ:</strong><br>
+  Ghép lọc đường nền vi sai (Border Nulling + Gaussian <i>σ</i> = 0.5), tiêm LoRA Conv2D (<i>r</i> = 4) và tích hợp hàm tổn thất ràng buộc thể tích khuyết tật:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>adapt</sub> = ℒ<sub>CE</sub>(ŷ<sub>shape</sub>, y) + λ<sub>reg</sub> · MSE(ŷ<sub>wld</sub>, y<sub>wld</sub>) + λ<sub>vol</sub> · |Ŵ · L̂ · D̂ - W<sub>true</sub> · L<sub>true</sub> · D<sub>true</sub>|<sup>2</sup></span>
+      <span class="eq-no">(Công thức 2.12)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Cơ chế bảo toàn năng lượng dòng xoáy bị chiếm chỗ:</strong>
+      <ul>
+        <li><span class="var">Vol<sub>pred</sub> = Ŵ · L̂ · D̂</span> và <span class="var">Vol<sub>true</sub> = W<sub>true</sub> · L<sub>true</sub> · D<sub>true</sub></span>: Thể tích hình học 3 chiều của vết nứt.</li>
+        <li><span class="var">λ<sub>vol</sub> = 0.5, λ<sub>reg</sub> = 1.0</span>: Ngăn chặn hiện tượng hồi quy tự do làm phồng hoặc bẹp kích thước.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   Đánh giá khắt khe trên <strong>10-Fold LODO (Phôi lạ hoàn toàn)</strong>: Mỗi fold cô lập hoàn toàn cả 2 lần quét của một phôi khuyết tật chưa từng thấy.
@@ -894,7 +1100,7 @@
         <th>Accuracy (%)</th>
         <th>Macro F1 (%)</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE Chiều Dài $L$ (mm)</th>
+        <th>MAE Chiều Dài <i>L</i> (mm)</th>
         <th>Vị Thế Khoa Học</th>
       </tr>
     </thead>
@@ -924,7 +1130,7 @@
         <td><strong>72.50%</strong></td>
         <td><strong>0.390 mm</strong></td>
         <td><strong>0.448 mm</strong></td>
-        <td>Đạt chuẩn kiểm định NDT ($<0.5$ mm)</td>
+        <td>Đạt chuẩn kiểm định NDT (&lt; 0.5 mm)</td>
       </tr>
       <tr>
         <td><strong>CNN Baseline (NoPINN LoRA)</strong></td>
@@ -933,13 +1139,13 @@
         <td>85.00%</td>
         <td>0.581 mm</td>
         <td>1.192 mm</td>
-        <td>Học vẹt: Acc ảo nhưng sai số $L$ nổ tung</td>
+        <td>Học vẹt: Acc ảo nhưng sai số <i>L</i> nổ tung</td>
       </tr>
     </tbody>
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>ĐỘT PHÁ LẦN 1:</em> Lần đầu tiên trên phôi lạ hoàn toàn (LODO), <strong>PINN chính thức đánh bại NoPINN trên cả 2 tiêu chí</strong>: Acc cao hơn ($+5.0\%$), Macro F1 vượt trội ($+13.33\%$) và MAE chiều dài $L$ giảm một nửa ($0.52$ mm vs $0.77$ mm).
+  <em>ĐỘT PHÁ LẦN 1:</em> Lần đầu tiên trên phôi lạ hoàn toàn (LODO), <strong>PINN chính thức đánh bại NoPINN trên cả 2 tiêu chí</strong>: Acc cao hơn (+5.0%), Macro F1 vượt trội (+13.33%) và MAE chiều dài <i>L</i> giảm một nửa (0.52 mm vs 0.77 mm).
   </p>
 </div>
 
@@ -948,19 +1154,33 @@
 <!-- ========================================================================= -->
 <div class="figure-card" style="text-align: left; margin: 16px 0; padding: 14px; border-left: 4px solid #0f4c81; background:#f0f9ff;">
   <h3 style="margin-top:0; color:#0f172a; font-size:11pt;">2.13 Phương Pháp 13: PI-LGL (Physics-Informed Laplacian Guarded LoRA &minus; Đỉnh Cao Đề Xuất SOTA)</h3>
-  <p><strong>A. Bản chất kỹ thuật & Nguyên lý hoạt động:</strong><br>
-  Tích hợp trọn vẹn 3 trụ cột toán học - vật lý:
-  1. <em>Thích ứng cấu trúc:</em> Bộ ghép LoRA Conv2D ($r=4, \alpha=8.0$).<br>
-  2. <em>Hiệu chuẩn giải tích:</em> Border-nulling và Spatial Gaussian filter.<br>
-  3. <em>Bộ gác cổng độ cong vật lý vi sai (Maxwell Laplacian Curvature Guard):</em> Tín hiệu điện áp vi sai $V(x, y)$ được tính toán toán tử Laplace cấp hai không gian:
-  $$\nabla^2 H(x, y) = \frac{\partial^2 V}{\partial x^2} + \frac{\partial^2 V}{\partial y^2}, \quad \text{MaxLap} = \max_{x, y} |\nabla^2 H(x, y)|$$
-  Theo quy luật vật lý dòng xoáy: Khuyết tật bậc góc nhọn (<code>Step_R</code>, <code>Step_T</code>) tạo bước nhảy từ trường với $\text{MaxLap} > 0.18\text{ V/mm}^2$; trong khi khuyết tật uốn cong elip (<code>Ellipse</code>) có trường trơn nhẵn với $\text{MaxLap} < 0.07\text{ V/mm}^2$. Thiết lập ngưỡng gác cổng $\tau_{\text{lap}} = 0.10\text{ V/mm}^2$: Nếu mạng nơ-ron đoán nhầm là `Step` nhưng $\text{MaxLap} < 0.10$, hệ thống tự động ghi đè sửa về `Ellipse`.
+  <p><strong>A. Bản chất kỹ thuật & Công thức toán tử Laplace không gian:</strong><br>
+  Tích hợp trọn vẹn LoRA Conv2D (<i>r</i> = 4) với toán tử vi phân cấp hai không gian (Maxwell Laplacian Curvature Guard) để thiết lập ranh giới vật lý loại trừ 100% nhầm lẫn hình học:
   </p>
+
+  <div class="math-card">
+    <div class="math-eq">
+      <span>∇²H(x, y) = (∂²V(x, y) / ∂x²) + (∂²V(x, y) / ∂y²), &nbsp;&nbsp;&nbsp; MaxLap = max<sub>(x,y)</sub> |∇²H(x, y)|</span>
+      <span class="eq-no">(Công thức 2.13)</span>
+    </div>
+    <div class="math-eq" style="border-bottom: none; margin-bottom: 0;">
+      <span>ŷ<sub>final</sub> = Ellipse &nbsp; (nếu ŷ<sub>net</sub> ∈ {Step_R, Step_T} &amp; MaxLap &lt; τ<sub>lap</sub>), &nbsp; ngược lại giữ ŷ<sub>net</sub></span>
+      <span class="eq-no">(Quy tắc gác cổng)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Ý nghĩa vật lý của ngưỡng gác cổng độ cong:</strong>
+      <ul>
+        <li>Khuyết tật góc bậc nhọn (<code>Step_R</code>, <code>Step_T</code>): Dòng xoáy bị ngắt đột ngột → MaxLap &gt; 0.18 V/mm².</li>
+        <li>Khuyết tật cong mềm (<code>Ellipse</code>): Dòng xoáy uốn lượn trơn nhẵn → MaxLap &lt; 0.07 V/mm².</li>
+        <li><span class="var">τ<sub>lap</sub> = 0.10 V/mm²</span>: Ngưỡng ranh giới vật lý giúp loại bỏ hoàn toàn các trường hợp mạng nơ-ron học vẹt đoán nhầm.</li>
+      </ul>
+    </div>
+  </div>
   
   <p><strong>B. Quy trình & Cơ chế lấy mẫu dữ liệu:</strong><br>
   Giao thức chuẩn kiểm định công nghiệp (Industrial Calibration & Inspection Protocol):
-  &bull; <em>Tập hiệu chuẩn (Train Calibration Set):</em> $10$ mẫu quét lượt A ($50\%$ dữ liệu thực nghiệm).<br>
-  &bull; <em>Tập kiểm tra mù (Holdout Inspection Set):</em> $10$ mẫu quét lượt B ($50\%$ dữ liệu thực nghiệm cô lập).
+  &bull; <em>Tập hiệu chuẩn (Train Calibration Set):</em> 10 mẫu quét lượt A (50% dữ liệu thực nghiệm).<br>
+  &bull; <em>Tập kiểm tra mù (Holdout Inspection Set):</em> 10 mẫu quét lượt B (50% dữ liệu thực nghiệm cô lập).
   </p>
 
   <p><strong>C. Bảng đối sánh kết quả thực nghiệm toàn diện 43 Checkpoints:</strong></p>
@@ -972,9 +1192,9 @@
         <th>Accuracy (%)</th>
         <th>MCC</th>
         <th>MAE Tổng (mm)</th>
-        <th>MAE $W$ (mm)</th>
-        <th>MAE $L$ (mm)</th>
-        <th>MAE $D$ (mm)</th>
+        <th>MAE <i>W</i> (mm)</th>
+        <th>MAE <i>L</i> (mm)</th>
+        <th>MAE <i>D</i> (mm)</th>
       </tr>
     </thead>
     <tbody>
@@ -1009,7 +1229,7 @@
         <td>0.672 mm</td>
       </tr>
       <tr class="highlight-pinn">
-        <td><strong>CNN PINN (\alpha=10, 5% Data)</strong></td>
+        <td><strong>CNN PINN (α=10, 5% Data)</strong></td>
         <td>PI-LGL</td>
         <td><strong>90.0%</strong></td>
         <td><strong>0.877</strong></td>
@@ -1019,7 +1239,7 @@
         <td>0.610 mm</td>
       </tr>
       <tr class="highlight-pinn">
-        <td><strong>CNN PINN (\alpha=1000, 5% Data)</strong></td>
+        <td><strong>CNN PINN (α=1000, 5% Data)</strong></td>
         <td>PI-LGL</td>
         <td><strong>90.0%</strong></td>
         <td><strong>0.880</strong></td>
@@ -1029,7 +1249,7 @@
         <td>0.450 mm</td>
       </tr>
       <tr style="background:#fef3c7;">
-        <td><strong>CNN Baseline (NoPINN 5%, \alpha=0)</strong></td>
+        <td><strong>CNN Baseline (NoPINN 5%, α=0)</strong></td>
         <td>PI-LGL</td>
         <td>90.0% (học vẹt)</td>
         <td>0.880</td>
@@ -1039,7 +1259,7 @@
         <td>0.464 mm</td>
       </tr>
       <tr>
-        <td><strong>Multitask MLP PINN (5% Data, \alpha=1)</strong></td>
+        <td><strong>Multitask MLP PINN (5% Data, α=1)</strong></td>
         <td>PI-LGL</td>
         <td>30.0%</td>
         <td>0.000</td>
@@ -1049,7 +1269,7 @@
         <td>1.047 mm</td>
       </tr>
       <tr>
-        <td><strong>Xiong et al. MLP (5% Data, \alpha=1)</strong></td>
+        <td><strong>Xiong et al. MLP (5% Data, α=1)</strong></td>
         <td>PI-LGL</td>
         <td><strong>N/A*</strong> <span style="font-size:7pt;color:#64748b;">(30.0% aux)</span></td>
         <td><strong>N/A*</strong></td>
@@ -1062,7 +1282,7 @@
   </table>
 
   <p><strong>D. Phân tích hiện tượng khoa học:</strong><br>
-  <em>ĐỈNH CAO TOÀN DIỆN (SOTA):</em> PI-LGL loại bỏ 100% các ca nhầm lẫn biên dạng, đưa Accuracy của PINN đạt <strong>80% &ndash; 90%</strong> trên toàn bộ các mức dữ liệu. Đồng thời, cơ chế Physics Guard giúp <strong>giảm hơn 60% sai số chiều dài $L$</strong> so với NoPINN ($0.448$ mm vs $1.192$ mm), trở thành phương pháp duy nhất đạt chuẩn an toàn NDT trong ứng dụng công nghiệp thực tế.
+  <em>ĐỈNH CAO TOÀN DIỆN (SOTA):</em> PI-LGL loại bỏ 100% các ca nhầm lẫn biên dạng, đưa Accuracy của PINN đạt <strong>80% &ndash; 90%</strong> trên toàn bộ các mức dữ liệu. Đồng thời, cơ chế Physics Guard giúp <strong>giảm hơn 60% sai số chiều dài <i>L</i></strong> so với NoPINN (0.448 mm vs 1.192 mm), trở thành phương pháp duy nhất đạt chuẩn an toàn NDT trong ứng dụng công nghiệp thực tế.
   </p>
 </div>
 
@@ -1080,7 +1300,7 @@
       <th>Phương Pháp Thích Ứng</th>
       <th>Accuracy Trung Bình (%)</th>
       <th>MAE Tổng (mm)</th>
-      <th>MAE Chiều Dài $L$ (mm)</th>
+      <th>MAE Chiều Dài <i>L</i> (mm)</th>
       <th>Đánh Giá Cấu Trúc Không Gian</th>
     </tr>
   </thead>
@@ -1114,12 +1334,12 @@
     </tr>
     <tr>
       <td rowspan="4"><strong>2. Multitask MLP PINN</strong><br><em>Phẳng hóa thành vector 1D</em></td>
-      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
+      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br><i>α</i> ∈ [0, 1000])</td>
       <td>Source Zero-Shot</td>
       <td>12.5%</td>
       <td>4.5016 mm</td>
       <td>9.8264 mm</td>
-      <td rowspan="4"><strong>Sụp đổ biểu diễn:</strong> Phẳng hóa 2D thành 1D ($1089$ px) phá hủy toàn bộ tô-pô lân cận. Ngay cả với PI-LGL, Acc trần chỉ đạt ~30.8% và sai số $L$ lên tới $6.11\text{ mm}$ (kém xa mức 0.35 mm của CNN).</td>
+      <td rowspan="4"><strong>Sụp đổ biểu diễn:</strong> Phẳng hóa 2D thành 1D (1089 px) phá hủy toàn bộ tô-pô lân cận. Ngay cả với PI-LGL, Acc trần chỉ đạt ~30.8% và sai số <i>L</i> lên tới 6.11 mm (kém xa mức 0.35 mm của CNN).</td>
     </tr>
     <tr>
       <td>FewShot PEFT</td>
@@ -1141,12 +1361,12 @@
     </tr>
     <tr>
       <td rowspan="4"><strong>3. Xiong et al. MLP PINN</strong><br><em>Mô hình kinh điển tham chiếu</em></td>
-      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br>$\alpha \in [0, 1000]$)</td>
+      <td rowspan="4"><strong>12 Models</strong><br>(1% &rarr; 10% Data,<br><i>α</i> ∈ [0, 1000])</td>
       <td>Source Zero-Shot</td>
       <td>N/A* <span style="font-size:7.5pt;color:#64748b;">(17.5% aux)</span></td>
       <td>619.90 mm</td>
       <td>1542.07 mm</td>
-      <td rowspan="4"><strong>Phân kỳ hồi quy &amp; Không phân loại:</strong> Mô hình gốc Xiong et al. (2023) là <em>Single-Task Regression</em> thuần hồi quy 3 chiều $(W, L, D)$, không có tác vụ phân loại hình dạng (*). Sai số hồi quy kích thước phân kỳ trên dữ liệu thực tế (> 600 mm) do thiếu tầng chuẩn hóa không gian và mất liên kết dipole 2D.</td>
+      <td rowspan="4"><strong>Phân kỳ hồi quy &amp; Không phân loại:</strong> Mô hình gốc Xiong et al. (2023) là <em>Single-Task Regression</em> thuần hồi quy 3 chiều (<i>W</i>, <i>L</i>, <i>D</i>), không có tác vụ phân loại hình dạng (*). Sai số hồi quy kích thước phân kỳ trên dữ liệu thực tế (> 600 mm) do thiếu tầng chuẩn hóa không gian và mất liên kết dipole 2D.</td>
     </tr>
     <tr>
       <td>FewShot PEFT</td>
@@ -1174,10 +1394,10 @@
   <thead>
     <tr>
       <th>Cấu Hình Checkpoint</th>
-      <th>CNN PINN (Acc / $L$-MAE)</th>
-      <th>CNN Baseline (Acc / $L$-MAE)</th>
-      <th>Multitask MLP PINN (Acc / $L$-MAE)</th>
-      <th>Xiong et al. MLP (Acc / $L$-MAE)</th>
+      <th>CNN PINN (Acc / <i>L</i>-MAE)</th>
+      <th>CNN Baseline (Acc / <i>L</i>-MAE)</th>
+      <th>Multitask MLP PINN (Acc / <i>L</i>-MAE)</th>
+      <th>Xiong et al. MLP (Acc / <i>L</i>-MAE)</th>
       <th>Đánh Giá Kỹ Thuật Độc Lập</th>
     </tr>
   </thead>
@@ -1188,7 +1408,7 @@
       <td>100.0% / 1.226 mm</td>
       <td>30.0% / 0.950 mm</td>
       <td>N/A* / 4383 mm (Phân kỳ)</td>
-      <td>CNN PINN nén sai số $L$ xuống 0.35 mm; Xiong MLP nổ sai số tới hàng nghìn mm.</td>
+      <td>CNN PINN nén sai số <i>L</i> xuống 0.35 mm; Xiong MLP nổ sai số tới hàng nghìn mm.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>3% Data (Seed 42)</strong></td>
@@ -1196,7 +1416,7 @@
       <td>100.0% / 0.875 mm</td>
       <td>30.0% / 7.819 mm</td>
       <td>N/A* / 1229 mm (Sụp đổ)</td>
-      <td>CNN duy trì $L$-MAE quanh 0.5 mm; MLP sai số chiều dài gấp 15&ndash;2400 lần.</td>
+      <td>CNN duy trì <i>L</i>-MAE quanh 0.5 mm; MLP sai số chiều dài gấp 15&ndash;2400 lần.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>5% Data (Seed 42, &alpha;=1)</strong></td>
@@ -1204,7 +1424,7 @@
       <td>90.0% / 1.192 mm</td>
       <td>30.0% / 8.729 mm</td>
       <td>N/A* / 3159 mm</td>
-      <td>PINN giảm 62% sai số $L$ so với Baseline (0.45 mm vs 1.19 mm); MLP kẹt cứng ở 30% Acc.</td>
+      <td>PINN giảm 62% sai số <i>L</i> so với Baseline (0.45 mm vs 1.19 mm); MLP kẹt cứng ở 30% Acc.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>5% Data (Seed 123, &alpha;=1)</strong></td>
@@ -1212,7 +1432,7 @@
       <td>100.0% / 0.967 mm</td>
       <td>30.0% / 1.454 mm</td>
       <td>N/A* / 448 mm</td>
-      <td>Cả hai biến thể CNN đều kiểm soát sai số $L < 1.0$ mm; Xiong MLP sai số 448 mm.</td>
+      <td>Cả hai biến thể CNN đều kiểm soát sai số <i>L</i> &lt; 1.0 mm; Xiong MLP sai số 448 mm.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>5% Data (Seed 456, &alpha;=1)</strong></td>
@@ -1228,7 +1448,7 @@
       <td>100.0% / 0.825 mm</td>
       <td>30.0% / 7.633 mm</td>
       <td>N/A* / 804 mm</td>
-      <td>CNN đạt chuẩn kiểm định NDT; Multitask MLP sai số $L$ tới 7.63 mm.</td>
+      <td>CNN đạt chuẩn kiểm định NDT; Multitask MLP sai số <i>L</i> tới 7.63 mm.</td>
     </tr>
     <tr>
       <td><strong>5% Data (&alpha;=0 / NoPINN)</strong></td>
@@ -1236,7 +1456,7 @@
       <td>90.0% / 1.192 mm</td>
       <td>10.0% / 2.348 mm</td>
       <td>N/A* / 229 mm</td>
-      <td>Khi bỏ ràng buộc vật lý, sai số chiều dài $L$ của CNN vọt lên 1.19 mm (tăng +166%).</td>
+      <td>Khi bỏ ràng buộc vật lý, sai số chiều dài <i>L</i> của CNN vọt lên 1.19 mm (tăng +166%).</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>5% Data (Seed 42, &alpha;=10)</strong></td>
@@ -1244,7 +1464,7 @@
       <td>&mdash;</td>
       <td>30.0% / 7.881 mm</td>
       <td>N/A* / 2801 mm</td>
-      <td>Ràng buộc vật lý &alpha;=10 hỗ trợ CNN đạt 90% Acc và ghìm sai số $L$ ở 0.64 mm.</td>
+      <td>Ràng buộc vật lý &alpha;=10 hỗ trợ CNN đạt 90% Acc và ghìm sai số <i>L</i> ở 0.64 mm.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>5% Data (Seed 42, &alpha;=100)</strong></td>
@@ -1281,7 +1501,7 @@
   </tbody>
 </table>
 <p style="font-size: 8.0pt; color: #475569; margin-top: 4px; line-height: 1.4;">
-  <em>(*) Ghi chú chuẩn mực khoa học: Mô hình tham chiếu Xiong et al. (2023) là kiến trúc thuần hồi quy kích thước khuyết tật (Single-Task Regression: $W, L, D$), không có tác vụ phân loại hình dạng (Classification). Cột kết quả phân loại được ghi nhận là <strong>N/A*</strong>; trong các thực nghiệm benchmark thích ứng miền, việc bổ sung đầu phân loại tuyến tính phụ (auxiliary head) chỉ đạt mức đoán mò ~20&ndash;30%.</em>
+  <em>(*) Ghi chú chuẩn mực khoa học: Mô hình tham chiếu Xiong et al. (2023) là kiến trúc thuần hồi quy kích thước khuyết tật (Single-Task Regression: <i>W</i>, <i>L</i>, <i>D</i>), không có tác vụ phân loại hình dạng (Classification). Cột kết quả phân loại được ghi nhận là <strong>N/A*</strong>; trong các thực nghiệm benchmark thích ứng miền, việc bổ sung đầu phân loại tuyến tính phụ (auxiliary head) chỉ đạt mức đoán mò ~20&ndash;30%.</em>
 </p>
 
 <div class="callout-info">
@@ -1308,9 +1528,9 @@
       <th>Kiến Trúc Mạng</th>
       <th>Ràng Buộc Vật Lý PINN</th>
       <th>Accuracy (%)</th>
-      <th>MAE $W$ (mm)</th>
-      <th>MAE $L$ (mm)</th>
-      <th>MAE $D$ (mm)</th>
+      <th>MAE <i>W</i> (mm)</th>
+      <th>MAE <i>L</i> (mm)</th>
+      <th>MAE <i>D</i> (mm)</th>
       <th>Overall MAE (mm)</th>
       <th>Đánh Giá Kỹ Thuật Độc Lập</th>
     </tr>
@@ -1325,7 +1545,7 @@
       <td>1.192 mm</td>
       <td>0.464 mm</td>
       <td>0.576 mm</td>
-      <td>Đoán đúng tên khuyết tật nhưng sai số chiều dài $L$ vượt 1.0 mm (Shortcut Learning).</td>
+      <td>Đoán đúng tên khuyết tật nhưng sai số chiều dài <i>L</i> vượt 1.0 mm (Shortcut Learning).</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>PINN</strong></td>
@@ -1336,7 +1556,7 @@
       <td><strong>0.448 mm</strong></td>
       <td><strong>0.672 mm</strong></td>
       <td><strong>0.401 mm</strong></td>
-      <td><strong>Tối ưu nhất:</strong> Giảm 62% sai số chiều dài $L$ (0.45 mm vs 1.19 mm), đạt chuẩn kiểm định NDT.</td>
+      <td><strong>Tối ưu nhất:</strong> Giảm 62% sai số chiều dài <i>L</i> (0.45 mm vs 1.19 mm), đạt chuẩn kiểm định NDT.</td>
     </tr>
     <tr>
       <td><strong>MLPPINN</strong></td>
@@ -1347,7 +1567,7 @@
       <td>8.729 mm</td>
       <td>1.047 mm</td>
       <td>3.297 mm</td>
-      <td>Phẳng hóa 1D phá hủy tô-pô lân cận; sai số $L$ gấp 19 lần PINN CNN.</td>
+      <td>Phẳng hóa 1D phá hủy tô-pô lân cận; sai số <i>L</i> gấp 19 lần PINN CNN.</td>
     </tr>
     <tr>
       <td><strong>XIONG</strong></td>
@@ -1374,7 +1594,7 @@
   </tbody>
 </table>
 <p style="font-size: 8.5pt; color: #475569; margin-top: 5px; line-height: 1.4;">
-  <em>(*) Chú thích tính toàn vẹn học thuật: Mô hình tham chiếu Xiong et al. (2023) là mạng thuần hồi quy kích thước khuyết tật (Single-Task Regression: $W, L, D$). Cột phân loại được đánh dấu <strong>N/A*</strong> vì bài báo gốc không thiết kế nhánh phân loại hình dạng; mức ~30% là kết quả của đầu phân loại phụ được gắn thêm để khảo sát trong bài toán thích ứng miền.</em>
+  <em>(*) Chú thích tính toàn vẹn học thuật: Mô hình tham chiếu Xiong et al. (2023) là mạng thuần hồi quy kích thước khuyết tật (Single-Task Regression: <i>W</i>, <i>L</i>, <i>D</i>). Cột phân loại được đánh dấu <strong>N/A*</strong> vì bài báo gốc không thiết kế nhánh phân loại hình dạng; mức ~30% là kết quả của đầu phân loại phụ được gắn thêm để khảo sát trong bài toán thích ứng miền.</em>
 </p>
 
 <h4 class="sub-title">Đồ Thị Tổng Hợp Toàn Diện (Master Dashboard): So Sánh Chung Toàn Bộ 5 Mô Hình</h4>
@@ -1383,10 +1603,10 @@
   <div class="caption">
     <strong>Hình 2.1 (Master Unified Benchmark Dashboard &mdash; So Sánh Chung Toàn Bộ 5 Mô Hình):</strong> 
     Khung nhìn tổng hợp tích hợp toàn bộ các mô hình và tiêu chuẩn đánh giá trên cùng một thể thống nhất, giải quyết triệt để vấn đề so sánh rời rạc:
-    <br>&bull; <strong>(a) Bản đồ biên tối ưu Pareto Frontier:</strong> Đưa toàn bộ các mô hình lên cùng một không gian tọa độ 2D đối sánh giữa Độ chính xác phân loại (%) và Sai số đo chiều dài $L$ (mm, thang Log). PINN (vòng tròn xanh) là mô hình duy nhất nằm trọn trong <em>Vùng đạt chuẩn kiểm định NDT (Pareto Qualified Zone)</em>, trong khi NOPINN rơi vào bẫy học vẹt, còn XIONG và MLPPINN phân kỳ nghiêm trọng.
+    <br>&bull; <strong>(a) Bản đồ biên tối ưu Pareto Frontier:</strong> Đưa toàn bộ các mô hình lên cùng một không gian tọa độ 2D đối sánh giữa Độ chính xác phân loại (%) và Sai số đo chiều dài <i>L</i> (mm, thang Log). PINN (vòng tròn xanh) là mô hình duy nhất nằm trọn trong <em>Vùng đạt chuẩn kiểm định NDT (Pareto Qualified Zone)</em>, trong khi NOPINN rơi vào bẫy học vẹt, còn XIONG và MLPPINN phân kỳ nghiêm trọng.
     <br>&bull; <strong>(b) Biểu đồ mạng nhện đa trục (Radar / Spider Chart):</strong> So sánh đồng thời cả 5 mô hình trên cùng 5 nan hoa chất lượng (Accuracy, Width Precision, Length Precision, Depth Precision, Overall Sizing Fidelity). Đa giác của PINN bao phủ diện tích cân bằng lớn nhất.
-    <br>&bull; <strong>(c) Biểu đồ cột tích hợp trục kép (Dual-Axis Grouped Metrics):</strong> Đặt chung cả 5 mô hình trên trục hoành, biểu diễn đồng thời cả Accuracy (trục trái, màu xanh) và toàn bộ 3 chiều kích thước $W, L, D$ cùng Overall MAE (trục phải, thang Log).
-    <br>&bull; <strong>(d) Quỹ đạo tiến trình quy mô dữ liệu:</strong> Quỹ đạo sai số chiều dài $L$ của toàn bộ các mô hình khi tăng dần tỷ lệ dữ liệu mô phỏng từ 1% đến 10%.
+    <br>&bull; <strong>(c) Biểu đồ cột tích hợp trục kép (Dual-Axis Grouped Metrics):</strong> Đặt chung cả 5 mô hình trên trục hoành, biểu diễn đồng thời cả Accuracy (trục trái, màu xanh) và toàn bộ 3 chiều kích thước <i>W</i>, <i>L</i>, <i>D</i> cùng Overall MAE (trục phải, thang Log).
+    <br>&bull; <strong>(d) Quỹ đạo tiến trình quy mô dữ liệu:</strong> Quỹ đạo sai số chiều dài <i>L</i> của toàn bộ các mô hình khi tăng dần tỷ lệ dữ liệu mô phỏng từ 1% đến 10%.
   </div>
 </div>
 
@@ -1396,11 +1616,11 @@
 <div class="grid-2col">
   <div class="figure-card">
     <img src="{{B64_ARCH_F3}}" alt="5 Models Spatial Breakdown WLD">
-    <div class="caption"><strong>Hình 2.2 (Bóc tách trực diện 3 chiều W, L, D):</strong> Bảng 3 đồ thị con (3-Panel) so sánh trực tiếp sai số Chiều rộng $W$, Chiều dài $L$ và Độ sâu $D$ giữa 5 mô hình dưới cơ chế PI-LGL.</div>
+    <div class="caption"><strong>Hình 2.2 (Bóc tách trực diện 3 chiều W, L, D):</strong> Bảng 3 đồ thị con (3-Panel) so sánh trực tiếp sai số Chiều rộng <i>W</i>, Chiều dài <i>L</i> và Độ sâu <i>D</i> giữa 5 mô hình dưới cơ chế PI-LGL.</div>
   </div>
   <div class="figure-card">
     <img src="{{B64_ARCH_F4}}" alt="5 Models Multi-Regime All Dimensions">
-    <div class="caption"><strong>Hình 2.3 (Thích ứng đa chế độ trên cả W, L, D):</strong> Đánh giá năng lực của 5 mô hình qua 4 chế độ thích ứng (Zero-Shot, Few-Shot PEFT, Domain MMD, PI-LGL) trên từng chiều kích thước không gian $W, L, D$ và Accuracy.</div>
+    <div class="caption"><strong>Hình 2.3 (Thích ứng đa chế độ trên cả W, L, D):</strong> Đánh giá năng lực của 5 mô hình qua 4 chế độ thích ứng (Zero-Shot, Few-Shot PEFT, Domain MMD, PI-LGL) trên từng chiều kích thước không gian <i>W</i>, <i>L</i>, <i>D</i> và Accuracy.</div>
   </div>
 </div>
 
@@ -1438,13 +1658,13 @@
     </tr>
     <tr>
       <td><strong>Kết quả NoPINN</strong></td>
-      <td>100.0% Acc (Học vẹt vân tay) | <strong>MAE $L = 1.22\text{ mm}$</strong></td>
-      <td><strong>55.0% Acc (Sụp đổ hiệu năng)</strong> | MAE $L = 0.77\text{ mm}$</td>
+      <td>100.0% Acc (Học vẹt vân tay) | <strong>MAE <i>L</i> = 1.22 mm</strong></td>
+      <td><strong>55.0% Acc (Sụp đổ hiệu năng)</strong> | MAE <i>L</i> = 0.77 mm</td>
     </tr>
     <tr>
       <td><strong>Kết quả PINN</strong></td>
-      <td><strong>90.0% – 100.0% Acc</strong> | <strong>MAE $L = 0.47\text{ mm}$ (Thắng tuyệt đối)</strong></td>
-      <td><strong>60.0% – 70.0% Acc (Vượt trội NoPINN)</strong> | <strong>MAE $L = 0.52\text{ mm}$</strong></td>
+      <td><strong>90.0% – 100.0% Acc</strong> | <strong>MAE <i>L</i> = 0.47 mm (Thắng tuyệt đối)</strong></td>
+      <td><strong>60.0% – 70.0% Acc (Vượt trội NoPINN)</strong> | <strong>MAE <i>L</i> = 0.52 mm</strong></td>
     </tr>
   </tbody>
 </table>
@@ -1469,7 +1689,7 @@
 
 <div class="callout-warning">
   <strong>BẰNG CHỨNG 2: NGHỊCH LÝ KÍCH THƯỚC VẬT LÝ (THE SIZING PARADOX)</strong><br>
-  Theo định luật Faraday, khoảng cách giữa 2 cực tín hiệu vi sai phản ánh đúng chiều dài $L$ của vết nứt. NoPINN đoán đúng tên chữ nhật nhưng chiều dài $L$ sai lệch tới <strong>1.22 mm – 1.71 mm</strong> (sai tới 85% chiều dài). Điều này chứng minh NoPINN không hề "nhìn" vào biên dạng vết nứt để phân loại mà chỉ bắt nhiễu pixel ngẫu nhiên.
+  Theo định luật Faraday, khoảng cách giữa 2 cực tín hiệu vi sai phản ánh đúng chiều dài <i>L</i> của vết nứt. NoPINN đoán đúng tên chữ nhật nhưng chiều dài <i>L</i> sai lệch tới <strong>1.22 mm – 1.71 mm</strong> (sai tới 85% chiều dài). Điều này chứng minh NoPINN không hề "nhìn" vào biên dạng vết nứt để phân loại mà chỉ bắt nhiễu pixel ngẫu nhiên.
 </div>
 
 <div class="callout-warning">
@@ -1490,7 +1710,7 @@
       <th>Hàm Mất Mát Khi Finetune</th>
       <th>Accuracy (%)</th>
       <th>MAE Tổng (mm)</th>
-      <th>MAE Chiều Dài $L$ (mm)</th>
+      <th>MAE Chiều Dài <i>L</i> (mm)</th>
       <th>Hiện Tượng & Đánh Giá</th>
     </tr>
   </thead>
@@ -1525,7 +1745,7 @@
       <td><strong>90.0% – 100%</strong></td>
       <td><strong>0.4100 mm</strong></td>
       <td><strong>0.4726 mm</strong></td>
-      <td><strong>Xuất sắc nhất:</strong> Ghìm chặt sai số $L$ xuống 0.47 mm!</td>
+      <td><strong>Xuất sắc nhất:</strong> Ghìm chặt sai số <i>L</i> xuống 0.47 mm!</td>
     </tr>
     <tr>
       <td><em>NoPINN - LoRA (Đối chứng)</em></td>
@@ -1544,7 +1764,7 @@
 <h2 class="section-title">6. Đột Phá PI-LGL: Master Benchmark Toàn Diện 19 Checkpoints (1% &rarr; 10% Data)</h2>
 <p>
   Phương pháp <strong>PI-LGL (Physics-Informed Laplacian Guarded LoRA)</strong> tích hợp điều kiện biên độ cong Laplace của tín hiệu vi sai:
-  Vết nứt cong Ellipse có đạo hàm bậc hai không gian cực đại $\max |\nabla^2 H| < 0.07\text{ V/mm}^2$, trong khi vết nứt bậc (Step) có bước nhảy gián đoạn vọt lên $> 0.18\text{ V/mm}^2$. Bằng cách thiết lập ngưỡng vật lý $\tau_{\text{lap}} = 0.10\text{ V/mm}^2$, mạng loại bỏ 100% nhầm lẫn hình học.
+  Vết nứt cong Ellipse có đạo hàm bậc hai không gian cực đại max |∇²<i>H</i>| &lt; 0.07 V/mm², trong khi vết nứt bậc (Step) có bước nhảy gián đoạn vọt lên &gt; 0.18 V/mm². Bằng cách thiết lập ngưỡng vật lý <i>τ</i><sub>lap</sub> = 0.10 V/mm², mạng loại bỏ 100% nhầm lẫn hình học.
 </p>
 
 <h3 class="sub-title">6.1 Bảng So Sánh Đối Đầu Toàn Diện 19 Checkpoints CNN Trên Mọi Quy Mô Dữ Liệu</h3>
@@ -1555,9 +1775,9 @@
       <th>Loại</th>
       <th>Acc (%)</th>
       <th>MCC</th>
-      <th>MAE $W$ (mm)</th>
-      <th>MAE $L$ (mm)</th>
-      <th>MAE $D$ (mm)</th>
+      <th>MAE <i>W</i> (mm)</th>
+      <th>MAE <i>L</i> (mm)</th>
+      <th>MAE <i>D</i> (mm)</th>
       <th>Overall MAE</th>
     </tr>
   </thead>
@@ -1757,7 +1977,7 @@
 
 <h3 class="sub-title">6.2 Bản Thiết Kế Kỹ Thuật Toàn Diện: Cơ Chế Hoạt Động, Cắt Bỏ Lớp, Huấn Luyện & Hàm Loss Của Từng Phương Pháp</h3>
 <p>
-  Nhằm đáp ứng tiêu chuẩn thẩm định khoa học khắt khe của các tạp chí Q1 (IEEE Transactions / Elsevier), bảng ma trận dưới đây đặc tả đầy đủ luồng xử lý, cấu trúc đóng băng/cắt bỏ lớp mạng, quy trình huấn luyện, dạng thức toán học của các hàm mất mát (Loss functions), vai trò của trọng số độ không chắc chắn (Uncertainty Loss) và cơ chế chuyển giao hàm mất mát vật lý PINN (với hệ số $\alpha$):
+  Nhằm đáp ứng tiêu chuẩn thẩm định khoa học khắt khe của các tạp chí Q1 (IEEE Transactions / Elsevier), bảng ma trận dưới đây đặc tả đầy đủ luồng xử lý, cấu trúc đóng băng/cắt bỏ lớp mạng, quy trình huấn luyện, dạng thức toán học của các hàm mất mát (Loss functions), vai trò của trọng số độ không chắc chắn (Uncertainty Loss) và cơ chế chuyển giao hàm mất mát vật lý PINN (với hệ số <i>α</i>):
 </p>
 
 <table class="styled-table" style="font-size: 8pt;">
@@ -1769,15 +1989,15 @@
       <th>Quy Trình Huấn Luyện (Optimizer, LR, Epochs)</th>
       <th>Hàm Mất Mát Toán Học (Loss Function)</th>
       <th>Sử Dụng Uncertainty Loss?</th>
-      <th>Sử Dụng PINN Loss & Hệ Số $\alpha$?</th>
+      <th>Sử Dụng PINN Loss & Hệ Số <i>α</i>?</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>1. Signal Calibration</strong><br><code>signal_calibration.py</code></td>
-      <td>Lọc đường nền phân tích $\hat{X} = X - \mu_{\text{base}}$ và làm mịn Gaussian vi mô $\sigma=0.5$ px nhằm triệt tiêu trôi dạt DC và rung chấn cơ học của cánh tay robot dò ECT.</td>
+      <td>Lọc đường nền phân tích X̂ = X - <i>μ</i><sub>base</sub> và làm mịn Gaussian vi mô <i>σ</i> = 0.5 px nhằm triệt tiêu trôi dạt DC và rung chấn cơ học của cánh tay robot dò ECT.</td>
       <td><strong>Không có mạng nơ-ron:</strong> Đóng vai trò tầng tiền xử lý xác định (deterministic pre-filter), loại bỏ nhiễu trước khi tensor đi vào mạng.</td>
-      <td><strong>Zero-Shot (Không cần train):</strong> Thời gian thực thi $< 5$ ms/mẫu. Không có tham số học lặp.</td>
+      <td><strong>Zero-Shot (Không cần train):</strong> Thời gian thực thi &lt; 5 ms/mẫu. Không có tham số học lặp.</td>
       <td>Không có hàm loss (Tiền xử lý tín hiệu giải tích thuần túy).</td>
       <td><span class="badge-base">Không trực tiếp</span><br>(Chuẩn hóa dữ liệu đầu vào cho mạng phía sau).</td>
       <td><span class="badge-pinn">Kế thừa 100%</span><br>Tương thích hoàn hảo với mọi checkpoint PINN đã huấn luyện trước.</td>
@@ -1785,65 +2005,65 @@
     <tr>
       <td><strong>2. Few-Shot PEFT / BitFit</strong><br><code>test_calibrated_peft.py</code></td>
       <td>Fine-tuning tham số hiệu quả (PEFT): Giữ nguyên toàn bộ không gian biểu diễn đặc trưng trường từ và chỉ nắn chỉnh các tầng ra cuối cùng trên số lượng mẫu thực tế rất ít.</td>
-      <td><strong>ĐÓNG BĂNG 100% Backbone:</strong> Khóa toàn bộ các tầng <code>nn.Conv2d</code> ($W_{\text{conv}}$ có <code>requires_grad = False</code>). Chỉ mở khóa Linear Heads hoặc vector Bias ($b \in \mathbb{R}^d$).</td>
-      <td><strong>AdamW</strong>, $\text{lr}_{\text{head}} = 5 \times 10^{-4}$, $\text{epochs} = 70$, $\text{weight\_decay} = 10^{-3}$, Cosine Annealing.</td>
-      <td>$$\mathcal{L} = \mathcal{L}_{\text{CE}}(\hat{y}, y) + \sum_{i \in \{W, L, D\}} \text{MSE}(\hat{r}_i, r_i)$$</td>
-      <td><span class="badge-base">Tùy chọn</span><br>Có thể kế thừa tham số $\log \sigma^2$ từ mô hình gốc để cân bằng.</td>
-      <td><span class="badge-pinn">Bảo toàn gián tiếp</span><br>Nhờ khóa $W_{\text{conv}}$, tri thức tích lũy từ $\alpha \mathcal{L}_{\text{PINN}}$ thời tiền huấn luyện được giữ nguyên vẹn 100%.</td>
+      <td><strong>ĐÓNG BĂNG 100% Backbone:</strong> Khóa toàn bộ các tầng <code>nn.Conv2d</code> (<b>W</b><sub>conv</sub> có <code>requires_grad = False</code>). Chỉ mở khóa Linear Heads hoặc vector Bias (<b>b</b> ∈ ℝ<sup>d</sup>).</td>
+      <td><strong>AdamW</strong>, lr<sub>head</sub> = 5 × 10⁻⁴, epochs = 70, weight_decay = 10⁻³, Cosine Annealing.</td>
+      <td><span class="var">ℒ = ℒ<sub>CE</sub>(ŷ, y) + ∑<sub>i∈{W,L,D}</sub> MSE(r̂<sub>i</sub>, r<sub>i</sub>)</span></td>
+      <td><span class="badge-base">Tùy chọn</span><br>Có thể kế thừa tham số log <i>σ</i>² từ mô hình gốc để cân bằng.</td>
+      <td><span class="badge-pinn">Bảo toàn gián tiếp</span><br>Nhờ khóa <b>W</b><sub>conv</sub>, tri thức tích lũy từ <i>α</i> · ℒ<sub>PINN</sub> thời tiền huấn luyện được giữ nguyên vẹn 100%.</td>
     </tr>
     <tr>
       <td><strong>3. DANN Adversarial DA</strong><br><code>dann_uda.py</code></td>
-      <td>Huấn luyện thích ứng miền đối nghịch (Adversarial UDA): Thêm nhánh Domain Classifier phân biệt dữ liệu mô phỏng ($d=0$) và thực tế ($d=1$) qua tầng đảo chiều đạo hàm GRL (Gradient Reversal Layer).</td>
-      <td><strong>Loại bỏ khi suy luận:</strong> Nhánh Domain Classifier $D(f(x))$ chỉ dùng khi huấn luyện; trong pha test, nhánh này bị cắt bỏ hoàn toàn, chỉ giữ lại Backbone + Task Heads.</td>
-      <td><strong>AdamW</strong>, $\text{lr} = 10^{-4}$, $\text{epochs} = 100$, hệ số GRL động $\lambda_p = \frac{2}{1 + \exp(-10 p)} - 1$.</td>
-      <td>$$\mathcal{L} = \mathcal{L}_{\text{task}} - \lambda_p \mathcal{L}_{\text{domain}}$$ với $\mathcal{L}_{\text{domain}} = \text{BCE}(D(f(x)), d)$.</td>
+      <td>Huấn luyện thích ứng miền đối nghịch (Adversarial UDA): Thêm nhánh Domain Classifier phân biệt dữ liệu mô phỏng (<i>d</i> = 0) và thực tế (<i>d</i> = 1) qua tầng đảo chiều đạo hàm GRL (Gradient Reversal Layer).</td>
+      <td><strong>Loại bỏ khi suy luận:</strong> Nhánh Domain Classifier <i>D</i>(<i>f</i>(<i>x</i>)) chỉ dùng khi huấn luyện; trong pha test, nhánh này bị cắt bỏ hoàn toàn, chỉ giữ lại Backbone + Task Heads.</td>
+      <td><strong>AdamW</strong>, lr = 10⁻⁴, epochs = 100, hệ số GRL động <i>λ</i><sub>p</sub> = 2 / (1 + exp(-10<i>p</i>)) - 1.</td>
+      <td><span class="var">ℒ = ℒ<sub>task</sub> - λ<sub>p</sub> · ℒ<sub>domain</sub></span><br>với <span class="var">ℒ<sub>domain</sub> = BCE(D(f(x)), d)</span></td>
       <td><span class="badge-base">Không dùng</span><br>Do bộ phân loại miền cần đạo hàm trực tiếp từ hàm mất mát đối nghịch nhị phân BCE.</td>
-      <td><span class="badge-base">Không dùng trong UDA</span><br>Dữ liệu miền thực tế không có trường dipole chuẩn FEM để tính $\mathcal{L}_{\text{PINN}}$, dễ gây quá khớp miền phân biệt ($N=18$).</td>
+      <td><span class="badge-base">Không dùng trong UDA</span><br>Dữ liệu miền thực tế không có trường dipole chuẩn FEM để tính ℒ<sub>PINN</sub>, dễ gây quá khớp miền phân biệt (<i>N</i> = 18).</td>
     </tr>
     <tr>
       <td><strong>4. Domain Transfer MMD / PI-MMD</strong><br><code>5_physics_informed_mmd.py</code></td>
-      <td>Căn chỉnh phân bố biểu diễn đặc trưng giữa miền mô phỏng $\mathcal{P}_s$ và miền thực nghiệm $\mathcal{P}_t$ trong không gian Hilbert tái tạo (RKHS) qua hạt nhân Gaussian RBF đa tỷ lệ.</td>
+      <td>Căn chỉnh phân bố biểu diễn đặc trưng giữa miền mô phỏng 𝒫<sub>s</sub> và miền thực nghiệm 𝒫<sub>t</sub> trong không gian Hilbert tái tạo (RKHS) qua hạt nhân Gaussian RBF đa tỷ lệ.</td>
       <td><strong>Không cắt bỏ tầng mạng:</strong> Toàn bộ các tầng Conv2d và Dense được giữ nguyên, chỉ chịu thêm lực kéo phân bố đặc trưng.</td>
-      <td><strong>AdamW</strong>, $\text{lr} = 2 \times 10^{-4}$, $\text{epochs} = 100$, huấn luyện theo cặp Mini-batch (Source Sim + Target Real).</td>
-      <td>$$\mathcal{L} = \mathcal{L}_{\text{task}} + \beta \mathcal{D}_{\text{MMD}}^2(\mathcal{P}_s, \mathcal{P}_t) + \alpha \mathcal{L}_{\text{vol}}$$</td>
+      <td><strong>AdamW</strong>, lr = 2 × 10⁻⁴, epochs = 100, huấn luyện theo cặp Mini-batch (Source Sim + Target Real).</td>
+      <td><span class="var">ℒ = ℒ<sub>task</sub> + β · MMD<sup>2</sup>(𝒫<sub>s</sub>, 𝒫<sub>t</sub>) + α · ℒ<sub>vol</sub></span></td>
       <td><span class="badge-pinn">Có sử dụng</span><br>Tích hợp tham số bất định để cân bằng giữa phân loại và hồi quy kích thước.</td>
-      <td><span class="badge-pinn">Có sử dụng ($\alpha$)</span><br>Tham số $\alpha$ được dùng để điều tiết thành phần thể tích dòng xoáy và dipole mô phỏng.</td>
+      <td><span class="badge-pinn">Có sử dụng (<i>α</i>)</span><br>Tham số <i>α</i> được dùng để điều tiết thành phần thể tích dòng xoáy và dipole mô phỏng.</td>
     </tr>
     <tr>
       <td><strong>5. PI-LoRA Conv</strong><br><code>run_lora_adaptation.py</code></td>
-      <td>Tiêm các ma trận thích ứng hạng thấp phân rã $W = W_0 + \frac{\alpha_{\text{lora}}}{r} B \cdot A$ ($r=4, \alpha_{\text{lora}}=8.0$) vào các tầng tích chập Conv2d. Giải phóng mạng khỏi đóng băng cứng mà không gây quên tri thức.</td>
-      <td><strong>ĐÓNG BĂNG 100% Trọng Số Gốc $W_0$:</strong> Toàn bộ ma trận gốc $W_0 \in \mathbb{R}^{C_{\text{out}} \times C_{\text{in}} \times k \times k}$ bị khóa tuyệt đối. Chỉ tính đạo hàm cho các ma trận nhỏ $A, B$ (chỉ chiếm ~1.2% tổng tham số).</td>
-      <td><strong>AdamW 3 Nhóm Tham Số:</strong><br>• LoRA ($A, B$): $\text{lr} = 10^{-3}$<br>• Heads: $\text{lr} = 5 \times 10^{-4}$<br>• Uncertainty: $\text{lr} = 10^{-3}$<br>Cosine Annealing, $\text{epochs} = 70$.</td>
-      <td>$$\mathcal{L} = \mathcal{L}_{\text{kendall}} + \lambda_{\text{phys}} \mathcal{L}_{\text{vol}} + 0.1 \mathcal{L}_{\text{pair}}$$ với $\mathcal{L}_{\text{vol}} = \|WLD - \kappa \max |H|\|^2$.</td>
-      <td><span class="badge-pinn">SỬ DỤNG TRỰC TIẾP</span><br>Kế thừa trực tiếp 4 tham số $\log \sigma^2$ từ mô hình của tác giả, tối ưu song song bằng lr riêng $10^{-3}$.</td>
-      <td><span class="badge-pinn">CHUYỂN HÓA VẬT LÝ</span><br>Tri thức từ $\alpha \mathcal{L}_{\text{PINN}}$ được bảo tồn trong $W_0$, đồng thời bổ sung định luật thể tích dòng xoáy vĩ mô $\mathcal{L}_{\text{vol}}$.</td>
+      <td>Tiêm các ma trận thích ứng hạng thấp phân rã <b>W</b> = <b>W</b><sub>0</sub> + (<i>α</i><sub>lora</sub> / <i>r</i>) <b>B</b> · <b>A</b> (<i>r</i> = 4, <i>α</i><sub>lora</sub> = 8.0) vào các tầng tích chập Conv2d. Giải phóng mạng khỏi đóng băng cứng mà không gây quên tri thức.</td>
+      <td><strong>ĐÓNG BĂNG 100% Trọng Số Gốc <b>W</b><sub>0</sub>:</strong> Toàn bộ ma trận gốc <b>W</b><sub>0</sub> ∈ ℝ<sup>C<sub>out</sub> × C<sub>in</sub> × k × k</sup> bị khóa tuyệt đối. Chỉ tính đạo hàm cho các ma trận nhỏ <i>A, B</i> (chỉ chiếm ~1.2% tổng tham số).</td>
+      <td><strong>AdamW 3 Nhóm Tham Số:</strong><br>• LoRA (<i>A, B</i>): lr = 10⁻³<br>• Heads: lr = 5 × 10⁻⁴<br>• Uncertainty: lr = 10⁻³<br>Cosine Annealing, epochs = 70.</td>
+      <td><span class="var">ℒ = ℒ<sub>kendall</sub> + λ<sub>phys</sub> · ℒ<sub>vol</sub> + 0.1 · ℒ<sub>pair</sub></span><br>với <span class="var">ℒ<sub>vol</sub> = ||WLD - κ · max |H|||<sup>2</sup></span></td>
+      <td><span class="badge-pinn">SỬ DỤNG TRỰC TIẾP</span><br>Kế thừa trực tiếp 4 tham số log <i>σ</i>² từ mô hình của tác giả, tối ưu song song bằng lr riêng 10⁻³.</td>
+      <td><span class="badge-pinn">CHUYỂN HÓA VẬT LÝ</span><br>Tri thức từ <i>α</i> · ℒ<sub>PINN</sub> được bảo tồn trong <b>W</b><sub>0</sub>, đồng thời bổ sung định luật thể tích dòng xoáy vĩ mô ℒ<sub>vol</sub>.</td>
     </tr>
     <tr>
       <td><strong>6. Pretrained Head Anchoring</strong><br><code>run_anchored_lora.py</code></td>
       <td>Bổ sung hàm phạt neo khoảng cách Euclid từ trọng số Classifier Head hiện tại về trọng số gốc đã được huấn luyện với PINN mô phỏng, chống hiện tượng lệch góc phân chia.</td>
-      <td>Khóa trọng số xương sống gốc $W_0$ (như LoRA), đồng thời giới hạn bán kính dịch chuyển của tầng Linear Classifier.</td>
-      <td><strong>AdamW</strong>, $\text{lr}_{\text{lora}} = 10^{-3}$, $\text{lr}_{\text{head}} = 5 \times 10^{-4}$, hệ số neo $\lambda_{\text{anchor}} = 0.05$, $\text{epochs} = 70$.</td>
-      <td>$$\mathcal{L} = \mathcal{L}_{\text{kendall}} + \lambda_{\text{phys}} \mathcal{L}_{\text{vol}} + \lambda_{\text{anchor}} \|W_{\text{clf}} - W_{\text{clf}}^{(0)}\|^2$$</td>
-      <td><span class="badge-pinn">SỬ DỤNG TRỰC TIẾP</span><br>Tích hợp đầy đủ trong $\mathcal{L}_{\text{kendall}}$.</td>
-      <td><span class="badge-pinn">Bảo toàn tri thức $\alpha$</span><br>Ngăn cản đầu phân loại bị méo mó khi học trên tập dữ liệu thực nghiệm ít mẫu.</td>
+      <td>Khóa trọng số xương sống gốc <b>W</b><sub>0</sub> (như LoRA), đồng thời giới hạn bán kính dịch chuyển của tầng Linear Classifier.</td>
+      <td><strong>AdamW</strong>, lr<sub>lora</sub> = 10⁻³, lr<sub>head</sub> = 5 × 10⁻⁴, hệ số neo <i>λ</i><sub>anchor</sub> = 0.05, epochs = 70.</td>
+      <td><span class="var">ℒ = ℒ<sub>kendall</sub> + λ<sub>phys</sub> · ℒ<sub>vol</sub> + λ<sub>anchor</sub> ||W<sub>clf</sub> - W<sub>clf</sub><sup>(0)</sup>||<sup>2</sup></span></td>
+      <td><span class="badge-pinn">SỬ DỤNG TRỰC TIẾP</span><br>Tích hợp đầy đủ trong ℒ<sub>kendall</sub>.</td>
+      <td><span class="badge-pinn">Bảo toàn tri thức <i>α</i></span><br>Ngăn cản đầu phân loại bị méo mó khi học trên tập dữ liệu thực nghiệm ít mẫu.</td>
     </tr>
     <tr>
       <td><strong>7. PI-NPC Prototype Classifier</strong><br><code>run_prototype_adaptation.py</code></td>
-      <td>Thay thế toàn bộ tầng Linear Softmax bằng bộ phân loại khoảng cách Cosine đến tâm cụm đặc trưng vật lý $\mathbf{c}_k = \frac{1}{|S_k|} \sum_{x \in S_k} f(x)$.</td>
-      <td><strong>CẮT BỎ HOÀN TOÀN Classifier Head:</strong> Loại bỏ ma trận $W_{\text{clf}} \in \mathbb{R}^{5 \times d}$ và bias $b_{\text{clf}}$, triệt tiêu hoàn toàn nguy cơ phân kỳ do thiếu mẫu.</td>
-      <td>Không cần lan truyền ngược trên Classifier Head. Trích xuất đặc trưng và tính tâm cụm giải tích: $\mathbf{c}_k$.</td>
-      <td>$$\hat{y} = \arg\max_k \frac{f(x) \cdot \mathbf{c}_k}{\|f(x)\| \|\mathbf{c}_k\|}$$ Tầng hồi quy kích thước tối ưu qua MSE.</td>
-      <td><span class="badge-base">Dùng cho Regressor</span><br>Cân bằng sai số giữa các chiều kích thước $W, L, D$.</td>
+      <td>Thay thế toàn bộ tầng Linear Softmax bằng bộ phân loại khoảng cách Cosine đến tâm cụm đặc trưng vật lý <b>c</b><sub>k</sub> = (1 / |S<sub>k</sub>|) ∑<sub>x ∈ S<sub>k</sub></sub> f(x).</td>
+      <td><strong>CẮT BỎ HOÀN TOÀN Classifier Head:</strong> Loại bỏ ma trận <b>W</b><sub>clf</sub> ∈ ℝ<sup>5 × d</sup> và bias <b>b</b><sub>clf</sub>, triệt tiêu hoàn toàn nguy cơ phân kỳ do thiếu mẫu.</td>
+      <td>Không cần lan truyền ngược trên Classifier Head. Trích xuất đặc trưng và tính tâm cụm giải tích: <b>c</b><sub>k</sub>.</td>
+      <td><span class="var">ŷ = argmax<sub>k</sub> [ (f(x) · c<sub>k</sub>) / (||f(x)|| ||c<sub>k</sub>||) ]</span><br>Tầng hồi quy tối ưu qua MSE.</td>
+      <td><span class="badge-base">Dùng cho Regressor</span><br>Cân bằng sai số giữa các chiều kích thước <i>W</i>, <i>L</i>, <i>D</i>.</td>
       <td><span class="badge-pinn">Kế thừa không gian nhúng</span><br>Tâm cụm hình học được định vị chuẩn xác nhờ không gian đặc trưng do PINN định hình.</td>
     </tr>
     <tr class="highlight-pinn">
       <td><strong>8. PI-LGL (Laplacian Guarded LoRA)</strong><br><code>run_pi_lgl_adaptation.py</code></td>
-      <td><strong>Phương Pháp Tối Thượng:</strong> Tích hợp bộ lọc làm mịn đường nền, thích ứng LoRA Conv, hàm mất mát thể tích dòng xoáy và Cổng kiểm định độ cong không gian Laplace $\nabla^2 H$.</td>
-      <td>Đóng băng toàn bộ trọng số tích chập gốc $W_0$. Cắt bỏ trôi dạt DC trước khi vào mạng.</td>
-      <td><strong>AdamW</strong>, $\text{lr}_{\text{lora}} = 10^{-3}$, $\text{lr}_{\text{head}} = 5 \times 10^{-4}$, $\text{epochs} = 70$, $\text{weight\_decay} = 10^{-3}$. Ngưỡng vật lý $\tau_{\text{lap}} = 0.10$.</td>
-      <td>$$\mathcal{L}_{\text{train}} = \mathcal{L}_{\text{kendall}} + \lambda_{\text{vol}} \mathcal{L}_{\text{vol}}$$ Suy luận: Cổng phân tách độ cong trường thế $\nabla^2 H < 0.10$.</td>
-      <td><span class="badge-pinn">SỬ DỤNG LINH HOẠT</span><br>Có thể dùng trực tiếp $\mathcal{L}_{\text{kendall}}$ hoặc kết hợp Task Loss chuẩn hóa.</td>
-      <td><span class="badge-pinn">KẾT HỢP HOÀN HẢO</span><br>Thừa hưởng toàn bộ tri thức $\alpha \in \{1, 10, 100, 1000\}$ từ mô hình giải tích trường từ ECT và bổ sung cổng lọc độ cong Laplacian $\nabla^2 H$ vào pha suy luận.</td>
+      <td><strong>Phương Pháp Tối Thượng:</strong> Tích hợp bộ lọc làm mịn đường nền, thích ứng LoRA Conv, hàm mất mát thể tích dòng xoáy và Cổng kiểm định độ cong không gian Laplace ∇²<i>H</i>.</td>
+      <td>Đóng băng toàn bộ trọng số tích chập gốc <b>W</b><sub>0</sub>. Cắt bỏ trôi dạt DC trước khi vào mạng.</td>
+      <td><strong>AdamW</strong>, lr<sub>lora</sub> = 10⁻³, lr<sub>head</sub> = 5 × 10⁻⁴, epochs = 70, weight_decay = 10⁻³. Ngưỡng vật lý <i>τ</i><sub>lap</sub> = 0.10.</td>
+      <td><span class="var">ℒ<sub>train</sub> = ℒ<sub>kendall</sub> + λ<sub>vol</sub> · ℒ<sub>vol</sub></span><br>Suy luận: Cổng phân tách độ cong ∇²H < 0.10.</td>
+      <td><span class="badge-pinn">SỬ DỤNG LINH HOẠT</span><br>Có thể dùng trực tiếp ℒ<sub>kendall</sub> hoặc kết hợp Task Loss chuẩn hóa.</td>
+      <td><span class="badge-pinn">KẾT HỢP HOÀN HẢO</span><br>Thừa hưởng toàn bộ tri thức <i>α</i> ∈ {1, 10, 100, 1000} từ mô hình giải tích trường từ ECT và bổ sung cổng lọc độ cong Laplacian ∇²<i>H</i> vào pha suy luận.</td>
     </tr>
   </tbody>
 </table>
@@ -1854,39 +2074,77 @@
 <div class="callout-info">
   <strong>1. CÔNG THỨC TOÁN HỌC GỐC CỦA TÁC GIẢ (KENDALL ET AL., CVPR 2018):</strong><br>
   Trong mã nguồn tiền huấn luyện (<code>main_percent_new.py</code>), hàm mất mát dữ liệu đa nhiệm được thiết lập có khả năng tự học độ không chắc chắn ngẫu nhiên đồng phương sai (Homoscedastic Task Uncertainty):
-  $$\mathcal{L}_{\text{data}} = \exp(-s_{\text{clf}}) \mathcal{L}_{\text{CE}}(\hat{y}, y) + \frac{1}{2} s_{\text{clf}} + \sum_{i \in \{W, L, D\}} \left( \frac{1}{2} \exp(-s_i) \text{MSE}(\hat{r}_i, r_i) + \frac{1}{2} s_i \right)$$
-  Trong đó $s = \log \sigma^2$ là tham số học được (learnable parameters) đại diện cho phương sai bất định của từng tác vụ. Thành phần $\exp(-s)$ đóng vai trò độ chính xác (precision weight), còn $\frac{1}{2} s$ là số hạng phạt điều hòa (regularizer) ngăn chặn nghiệm suy biến $s \to \infty$.<br><br>
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>data</sub> = exp(-s<sub>clf</sub>) · ℒ<sub>CE</sub>(ŷ, y) + ½ s<sub>clf</sub> + ∑<sub>i∈{W,L,D}</sub> [ ½ exp(-s<sub>i</sub>) · MSE(r̂<sub>i</sub>, r<sub>i</sub>) + ½ s<sub>i</sub> ]</span>
+      <span class="eq-no">(Công thức Kendall)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Chú thích cơ chế tự cân bằng bất định (Homoscedastic Task Uncertainty):</strong>
+      <ul>
+        <li><span class="var">s = log(σ²)</span>: Tham số học được (learnable parameters) đại diện cho logarit của phương sai bất định của từng tác vụ.</li>
+        <li><span class="var">exp(-s) = 1/σ²</span>: Đóng vai trò hệ số trọng số thích nghi (adaptive precision weight). Tác vụ nào có phương sai nhiễu lớn sẽ tự động bị giảm trọng số.</li>
+        <li><span class="var">½ s</span>: Số hạng phạt điều hòa (regularizer) ngăn chặn nghiệm suy biến khi <i>s</i> → ∞.</li>
+      </ul>
+    </div>
+  </div>
+  Trong đó <i>s</i> = log <i>σ</i>² là tham số học được (learnable parameters) đại diện cho phương sai bất định của từng tác vụ. Thành phần exp(-<i>s</i>) đóng vai trò độ chính xác (precision weight), còn ½ <i>s</i> là số hạng phạt điều hòa (regularizer) ngăn chặn nghiệm suy biến <i>s</i> → ∞.<br><br>
   <strong>2. TẠI SAO CỰC KỲ QUAN TRỌNG KHI FINE-TUNE THÍCH ỨNG MIỀN (DOMAIN ADAPTATION)?</strong><br>
   Khi chuyển sang tập dữ liệu thực nghiệm 5 kHz (chỉ có 10–18 mẫu huấn luyện):
   <ul>
-    <li>Hàm phân loại Cross-Entropy cho 5 lớp thường có giá trị ban đầu dao động trong khoảng $1.5 – 2.0$.</li>
-    <li>Trong khi đó, nhãn kích thước $W, L, D$ sau khi được chuẩn hóa MinMax về $[0, 1]$ có hàm MSE rất nhỏ (chỉ khoảng $0.005 – 0.05$).</li>
-    <li><strong>Nếu dùng tổng cố định (không có Uncertainty Loss):</strong> Đạo hàm của nhánh phân loại sẽ áp đảo hoàn toàn (lớn gấp hàng chục lần nhánh hồi quy). Mạng nơ-ron sẽ chỉ tập trung đoán đúng nhãn mà phá nát hoàn toàn khả năng ước lượng kích thước, dẫn đến sai số chiều dài $L$ vọt lên $> 1.5\text{ mm}$!</li>
+    <li>Hàm phân loại Cross-Entropy cho 5 lớp thường có giá trị ban đầu dao động trong khoảng 1.5 – 2.0.</li>
+    <li>Trong khi đó, nhãn kích thước <i>W</i>, <i>L</i>, <i>D</i> sau khi được chuẩn hóa MinMax về [0, 1] có hàm MSE rất nhỏ (chỉ khoảng 0.005 – 0.05).</li>
+    <li><strong>Nếu dùng tổng cố định (không có Uncertainty Loss):</strong> Đạo hàm của nhánh phân loại sẽ áp đảo hoàn toàn (lớn gấp hàng chục lần nhánh hồi quy). Mạng nơ-ron sẽ chỉ tập trung đoán đúng nhãn mà phá nát hoàn toàn khả năng ước lượng kích thước, dẫn đến sai số chiều dài <i>L</i> vọt lên &gt; 1.5 mm!</li>
   </ul>
   <strong>3. CƠ CHẾ SỬ DỤNG TRONG CÁC PHƯƠNG PHÁP:</strong><br>
-  Trong phương pháp <code>lora_conv.py</code> và <code>run_lora_adaptation.py</code>, chúng tôi <strong>SỬ DỤNG TRỰC TIẾP</strong> lớp <code>KendallMultiTaskLoss</code>: Bốn tham số $s_{\text{clf}}, s_w, s_l, s_d$ được kế thừa từ checkpoint gốc và được tách riêng thành một Parameter Group trong Optimizer với learning rate riêng $10^{-3}$. Điều này giúp mạng tự động cân bằng động lực học thích ứng, bảo vệ độ chính xác hồi quy của cả ba chiều $W, L, D$.
+  Trong phương pháp <code>lora_conv.py</code> và <code>run_lora_adaptation.py</code>, chúng tôi <strong>SỬ DỤNG TRỰC TIẾP</strong> lớp <code>KendallMultiTaskLoss</code>: Bốn tham số <i>s</i><sub>clf</sub>, <i>s</i><sub>w</sub>, <i>s</i><sub>l</sub>, <i>s</i><sub>d</sub> được kế thừa từ checkpoint gốc và được tách riêng thành một Parameter Group trong Optimizer với learning rate riêng 10⁻³. Điều này giúp mạng tự động cân bằng động lực học thích ứng, bảo vệ độ chính xác hồi quy của cả ba chiều <i>W</i>, <i>L</i>, <i>D</i>.
 </div>
 
-<h3 class="sub-title">Chuyên Đề 2: Về Hàm Mất Mát Vật Lý PINN Loss Của Tác Giả & Vai Trò Của Hệ Số $\alpha$</h3>
+<h3 class="sub-title">Chuyên Đề 2: Về Hàm Mất Mát Vật Lý PINN Loss Của Tác Giả & Vai Trò Của Hệ Số <i>α</i></h3>
 <div class="callout-warning">
   <strong>1. CÔNG THỨC TOÁN HỌC TIỀN HUẤN LUYỆN:</strong><br>
   Mô hình PINN của tác giả được huấn luyện với tổng hàm mất mát tích hợp vật lý:
-  $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{data}} + \alpha \cdot \mathcal{L}_{\text{PINN}}$$
-  Trong đó $\mathcal{L}_{\text{PINN}} = \log\left(1 + \frac{\text{SSE}}{\sum B_{\text{true}}^2}\right)$ (dạng <code>log1p_norm_sse</code>) dựa trên mô hình giải tích trường từ nhiễu loạn (Analytical Perturbation / Magnetic Dipole Forward Model), với hệ số trọng số vật lý $\alpha \in \{1, 10, 100, 1000\}$ (hoặc khởi tạo $\alpha = 0.02$).<br><br>
-  <strong>2. TẠI SAO KHÔNG THỂ TÍNH TRỰC TIẾP $\mathcal{L}_{\text{PINN}}$ NGUYÊN BẢN TRÊN DỮ LIỆU THỰC TẾ?</strong><br>
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>total</sub> = ℒ<sub>data</sub> + α · ℒ<sub>PINN</sub>, &nbsp;&nbsp;&nbsp; với &nbsp; ℒ<sub>PINN</sub> = log(1 + SSE / ∑ B<sub>true</sub><sup>2</sup>)</span>
+      <span class="eq-no">(Công thức PINN)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Hàm mất mát tích hợp vật lý giải tích từ trường (Dipole Forward Model):</strong>
+      <ul>
+        <li><span class="var">SSE</span>: Tổng bình phương sai lệch giữa trường từ dự đoán của mạng và trường giải tích lưỡng cực vi sai.</li>
+        <li><span class="var">α ∈ {1, 10, 100, 1000}</span>: Trọng số siêu tham số vật lý quy định mức độ chi phối của định luật Maxwell.</li>
+      </ul>
+    </div>
+  </div>
+  Trong đó ℒ<sub>PINN</sub> = log(1 + SSE / ∑ B<sub>true</sub>²) (dạng <code>log1p_norm_sse</code>) dựa trên mô hình giải tích trường từ nhiễu loạn (Analytical Perturbation / Magnetic Dipole Forward Model), với hệ số trọng số vật lý <i>α</i> ∈ {1, 10, 100, 1000} (hoặc khởi tạo <i>α</i> = 0.02).<br><br>
+  <strong>2. TẠI SAO KHÔNG THỂ TÍNH TRỰC TIẾP ℒ<sub>PINN</sub> NGUYÊN BẢN TRÊN DỮ LIỆU THỰC TẾ?</strong><br>
   Đây là một hạn chế bản chất của bài toán đo đạc thực nghiệm dòng xoáy (Sim-to-Real Gap):
   <ul>
-    <li>Trong pha tiền huấn luyện mô phỏng, hàm mất mát vật lý $\mathcal{L}_{\text{PINN}}$ sử dụng mô hình giải tích trường từ nhiễu loạn (Analytical Perturbation & Dipole Model) kết hợp hiệu ứng bề mặt $\exp(z/\delta)$ để tính trường từ giải tích $H_{\text{pred}}(W, L, D)$ lý tưởng tương ứng với từng hình thái nứt.</li>
-    <li>Trong thực tế kiểm tra NDT ngoài hiện trường, đầu dò vi sai 5 kHz chỉ thu được tín hiệu điện áp vi sai hai chiều $\Delta V(x, y)$ trên bề mặt phôi với độ nhạy máy đo, độ nâng (lift-off), nhiễu đường nền và ảnh hưởng bề mặt thực. Không thể nội suy trực tiếp hàm giải tích lý tưởng này để tính phần dư loss ngược trên phôi thực.</li>
+    <li>Trong pha tiền huấn luyện mô phỏng, hàm mất mát vật lý ℒ<sub>PINN</sub> sử dụng mô hình giải tích trường từ nhiễu loạn (Analytical Perturbation & Dipole Model) kết hợp hiệu ứng bề mặt exp(<i>z</i> / <i>δ</i>) để tính trường từ giải tích <i>H</i><sub>pred</sub>(<i>W, L, D</i>) lý tưởng tương ứng với từng hình thái nứt.</li>
+    <li>Trong thực tế kiểm tra NDT ngoài hiện trường, đầu dò vi sai 5 kHz chỉ thu được tín hiệu điện áp vi sai hai chiều Δ<i>V</i>(<i>x, y</i>) trên bề mặt phôi với độ nhạy máy đo, độ nâng (lift-off), nhiễu đường nền và ảnh hưởng bề mặt thực. Không thể nội suy trực tiếp hàm giải tích lý tưởng này để tính phần dư loss ngược trên phôi thực.</li>
   </ul>
-  <strong>3. VẬY LOSS PINN VÀ HỆ SỐ $\alpha$ ĐƯỢC CHUYỂN GIAO VÀ BẢO TỒN NHƯ THẾ NÀO?</strong><br>
-  Chúng tôi đã hiện thực hóa việc bảo tồn và phát huy tri thức $\alpha \mathcal{L}_{\text{PINN}}$ qua <strong>3 cơ chế khoa học chặt chẽ</strong>:
+  <strong>3. VẬY LOSS PINN VÀ HỆ SỐ <i>α</i> ĐƯỢC CHUYỂN GIAO VÀ BẢO TỒN NHƯ THẾ NÀO?</strong><br>
+  Chúng tôi đã hiện thực hóa việc bảo tồn và phát huy tri thức <i>α</i> · ℒ<sub>PINN</sub> qua <strong>3 cơ chế khoa học chặt chẽ</strong>:
   <ol>
-    <li><strong>Bảo tồn 100% qua việc đóng băng trọng số trích xuất đặc trưng ($W_0$):</strong> Các tầng Conv2d của mô hình PINN tiền huấn luyện đã được "tôi luyện" qua hàng trăm nghìn bước lặp với hàm giải tích $\alpha \mathcal{L}_{\text{PINN}}$, hình thành nên các bộ lọc trích xuất trường thế từ trơn nhẵn. Bằng cách khóa tuyệt đối $W_0$ trong PEFT và LoRA, toàn bộ tri thức vật lý ứng với từng giá trị $\alpha$ (1, 10, 100, 1000) được giữ nguyên vẹn, ngăn chặn hoàn toàn hiện tượng quên thảm họa (Catastrophic Forgetting).</li>
-    <li><strong>Chuyển hóa sang bất biến thể tích dòng xoáy vĩ mô ($\mathcal{L}_{\text{vol}}$):</strong> Thay vì dùng hàm giải tích vi sai khó khớp tuyệt đối, chúng tôi ép điều kiện bảo toàn thể tích dòng xoáy cảm ứng vĩ mô theo định luật Faraday:
-    $$\mathcal{L}_{\text{vol}} = \left\| (W \cdot L \cdot D) - \kappa \cdot \max |H| \right\|^2$$
-    Khối thể tích kim loại bị khuyết tật chiếm chỗ tỷ lệ thuận trực tiếp với biên độ cực đại của tín hiệu phản hồi vi sai $\max |H|$.</li>
-    <li><strong>Cưỡng bức điều kiện biên độ cong không gian Laplacian ($\nabla^2 H$):</strong> Tại pha suy luận, chúng tôi áp dụng toán tử Laplacian vi sai bề mặt $\nabla^2 H = \frac{\partial^2 H}{\partial x^2} + \frac{\partial^2 H}{\partial y^2}$. Khuyết tật biên cong liên tục (Ellipse) có $\max |\nabla^2 H| < 0.07\text{ V/mm}^2$, trong khi vết nứt có bậc độ sâu gián đoạn (Step) có bước nhảy vọt $> 0.18\text{ V/mm}^2$. Bằng cách thiết lập cổng kiểm định $\tau_{\text{lap}} = 0.10$, mô hình loại bỏ hoàn toàn các lỗi dự đoán vi phạm quy luật vật lý.</li>
+    <li><strong>Bảo tồn 100% qua việc đóng băng trọng số trích xuất đặc trưng (<b>W</b><sub>0</sub>):</strong> Các tầng Conv2d của mô hình PINN tiền huấn luyện đã được "tôi luyện" qua hàng trăm nghìn bước lặp với hàm giải tích <i>α</i> · ℒ<sub>PINN</sub>, hình thành nên các bộ lọc trích xuất trường thế từ trơn nhẵn. Bằng cách khóa tuyệt đối <b>W</b><sub>0</sub> trong PEFT và LoRA, toàn bộ tri thức vật lý ứng với từng giá trị <i>α</i> (1, 10, 100, 1000) được giữ nguyên vẹn, ngăn chặn hoàn toàn hiện tượng quên thảm họa (Catastrophic Forgetting).</li>
+    <li><strong>Chuyển hóa sang bất biến thể tích dòng xoáy vĩ mô (ℒ<sub>vol</sub>):</strong> Thay vì dùng hàm giải tích vi sai khó khớp tuyệt đối, chúng tôi ép điều kiện bảo toàn thể tích dòng xoáy cảm ứng vĩ mô theo định luật Faraday:
+  <div class="math-card">
+    <div class="math-eq">
+      <span>ℒ<sub>vol</sub> = ||(W · L · D) - κ · max |H|||<sup>2</sup></span>
+      <span class="eq-no">(Bảo toàn thể tích)</span>
+    </div>
+    <div class="math-desc">
+      <strong>Định luật bảo toàn thể tích cảm ứng dòng xoáy theo Faraday:</strong>
+      <ul>
+        <li><span class="var">Vol = W · L · D</span>: Thể tích hình học của khuyết tật kim loại bị chiếm chỗ.</li>
+        <li><span class="var">max |H|</span>: Biên độ cực đại của trường phản hồi cảm ứng vi sai đo được trên bề mặt.</li>
+        <li><span class="var">κ</span>: Hằng số độ nhạy cảm ứng phụ thuộc độ dẫn điện <i>σ</i> và tần số 5 kHz.</li>
+      </ul>
+    </div>
+  </div>
+    Khối thể tích kim loại bị khuyết tật chiếm chỗ tỷ lệ thuận trực tiếp với biên độ cực đại của tín hiệu phản hồi vi sai max |<i>H</i>|.</li>
+    <li><strong>Cưỡng bức điều kiện biên độ cong không gian Laplacian (∇²<i>H</i>):</strong> Tại pha suy luận, chúng tôi áp dụng toán tử Laplacian vi sai bề mặt ∇²<i>H</i> = ∂²<i>H</i>/∂x² + ∂²<i>H</i>/∂y². Khuyết tật biên cong liên tục (Ellipse) có max |∇²<i>H</i>| &lt; 0.07 V/mm², trong khi vết nứt có bậc độ sâu gián đoạn (Step) có bước nhảy vọt &gt; 0.18 V/mm². Bằng cách thiết lập cổng kiểm định <i>τ</i><sub>lap</sub> = 0.10, mô hình loại bỏ hoàn toàn các lỗi dự đoán vi phạm quy luật vật lý.</li>
   </ol>
 </div>
 
@@ -1907,9 +2165,9 @@
       <th>Loại</th>
       <th>Acc (%)</th>
       <th>MCC</th>
-      <th>MAE $W$ (mm)</th>
-      <th>MAE $L$ (mm)</th>
-      <th>MAE $D$ (mm)</th>
+      <th>MAE <i>W</i> (mm)</th>
+      <th>MAE <i>L</i> (mm)</th>
+      <th>MAE <i>D</i> (mm)</th>
       <th>Overall MAE</th>
     </tr>
   </thead>
@@ -2157,13 +2415,13 @@
   </tbody>
 </table>
 <p style="font-size: 8.0pt; color: #475569; margin-top: 4px; line-height: 1.4;">
-  <em>(*) Ghi chú học thuật bắt buộc: Toàn bộ 12 checkpoint của Xiong et al. (2023) nguyên bản là mạng thuần hồi quy kích thước khuyết tật 3 chiều $(W, L, D)$ (Single-Task Regression). Cột Accuracy và MCC được ghi nhận chuẩn xác là <strong>N/A*</strong> do kiến trúc không có tác vụ phân loại hình dạng.</em>
+  <em>(*) Ghi chú học thuật bắt buộc: Toàn bộ 12 checkpoint của Xiong et al. (2023) nguyên bản là mạng thuần hồi quy kích thước khuyết tật 3 chiều (<i>W</i>, <i>L</i>, <i>D</i>) (Single-Task Regression). Cột Accuracy và MCC được ghi nhận chuẩn xác là <strong>N/A*</strong> do kiến trúc không có tác vụ phân loại hình dạng.</em>
 </p>
 
 <div class="callout-danger">
   <strong>NHẬN XÉT ĐẶC BIỆT VỀ KIẾN TRÚC MLP:</strong><br>
-  1. <strong>Xiong et al. MLP:</strong> Mô hình nguyên bản là <em>Single-Task Regression</em> thuần hồi quy $(W, L, D)$. Sai số chiều dài $L$ phân kỳ tới 4383 mm (trung bình > 600 mm) do thiếu tầng chuẩn hóa không gian và mất cấu trúc dipole 2D.<br>
-  2. <strong>Multitask MLP:</strong> Mặc dù cải thiện được sai số tổng ($0.93&ndash;5.01$ mm), độ chính xác phân loại chỉ kẹt cứng ở mức 30.8% (không vượt quá 50%).<br>
+  1. <strong>Xiong et al. MLP:</strong> Mô hình nguyên bản là <em>Single-Task Regression</em> thuần hồi quy (<i>W</i>, <i>L</i>, <i>D</i>). Sai số chiều dài <i>L</i> phân kỳ tới 4383 mm (trung bình > 600 mm) do thiếu tầng chuẩn hóa không gian và mất cấu trúc dipole 2D.<br>
+  2. <strong>Multitask MLP:</strong> Mặc dù cải thiện được sai số tổng (0.93 – 5.01 mm), độ chính xác phân loại chỉ kẹt cứng ở mức 30.8% (không vượt quá 50%).<br>
   3. <strong>Kết luận:</strong> Không có bất kỳ mô hình MLP nào đạt tiêu chuẩn công nghiệp kiểm định ECT Sim-to-Real.
 </div>
 
@@ -2172,7 +2430,7 @@
 
 <h3 class="sub-title">7.1 Phân Tích Toàn Diện 19 Checkpoints, Sai Số W-L-D & Đánh Giá Từng Lớp Khuyết Tật</h3>
 <p>
-  Tất cả các hình ảnh dưới đây được tạo lập theo quy chuẩn khắt khe của <strong>IEEE Transactions</strong>: Font chữ chuẩn <em>Times New Roman</em>, độ phân giải <strong>300 DPI</strong>, vạch đo hướng vào trong (inward ticks), dải màu chuyên nghiệp phân biệt rõ ràng giữa PINN và Không PINN (Baseline), tích hợp đường phân định lý tưởng $y=x$ và dải biên sai số $\pm 0.5$ mm.
+  Tất cả các hình ảnh dưới đây được tạo lập theo quy chuẩn khắt khe của <strong>IEEE Transactions</strong>: Font chữ chuẩn <em>Times New Roman</em>, độ phân giải <strong>300 DPI</strong>, vạch đo hướng vào trong (inward ticks), dải màu chuyên nghiệp phân biệt rõ ràng giữa PINN và Không PINN (Baseline), tích hợp đường phân định lý tưởng <i>y</i> = <i>x</i> và dải biên sai số ±0.5 mm.
 </p>
 
 <div class="grid-2col">
@@ -2182,7 +2440,7 @@
   </div>
   <div class="figure-card">
     <img src="{{B64_IEEE_F2}}" alt="IEEE Fig 2">
-    <div class="caption"><strong>Hình 2 (IEEE Dimension Breakdown):</strong> Phân bố Boxplot sai số tuyệt đối MAE của ba chiều không gian Khuyết tật (Bề rộng $W$, Chiều dài $L$, Độ sâu $D$), chứng minh PINN ghìm chặt sai số chiều dài.</div>
+    <div class="caption"><strong>Hình 2 (IEEE Dimension Breakdown):</strong> Phân bố Boxplot sai số tuyệt đối MAE của ba chiều không gian Khuyết tật (Bề rộng <i>W</i>, Chiều dài <i>L</i>, Độ sâu <i>D</i>), chứng minh PINN ghìm chặt sai số chiều dài.</div>
   </div>
 </div>
 
@@ -2193,7 +2451,7 @@
   </div>
   <div class="figure-card">
     <img src="{{B64_IEEE_F4}}" alt="IEEE Fig 4">
-    <div class="caption"><strong>Hình 4 (IEEE Per-Class WLD MAE):</strong> Sai số hồi quy chi tiết cho từng chiều kích thước ($W, L, D$) trên từng lớp khuyết tật hình học, minh chứng tính ổn định vật lý cao của PINN.</div>
+    <div class="caption"><strong>Hình 4 (IEEE Per-Class WLD MAE):</strong> Sai số hồi quy chi tiết cho từng chiều kích thước (<i>W</i>, <i>L</i>, <i>D</i>) trên từng lớp khuyết tật hình học, minh chứng tính ổn định vật lý cao của PINN.</div>
   </div>
 </div>
 
@@ -2202,10 +2460,10 @@
     <img src="{{B64_IEEE_F5}}" alt="IEEE Fig 5 Parity" style="max-height: 290px; object-fit: contain;">
     <div class="caption">
       <strong>Hình 5 (IEEE Parity Plots &mdash; Đối Sánh Trực Diện NoPINN vs Proposed PINN):</strong> 
-      Biểu đồ tương quan Parity giữa giá trị dự đoán và thực tế cho cả 3 chiều kích thước: Width ($W$), Length ($L$) và Depth ($D$) giữa 
+      Biểu đồ tương quan Parity giữa giá trị dự đoán và thực tế cho cả 3 chiều kích thước: Width (<i>W</i>), Length (<i>L</i>) và Depth (<i>D</i>) giữa 
       <strong>NoPINN Baseline</strong> (hình vuông vàng cam, viền nâu đậm) và <strong>Proposed PINN</strong> (hình tròn xanh navy đậm, viền trắng).
-      Dải màu xanh lục thể hiện dải dung sai mục tiêu ($\pm 0.1$ mm cho $W$, $\pm 0.5$ mm cho $L$ và $D$). 
-      Đặc biệt ở chiều dài $L$, các điểm của PINN hội tụ chuẩn xác quanh đường $y=x$ ($\text{MAE} = 0.448$ mm), trong khi NoPINN lệch hẳn xuống dưới ($\text{MAE} = 1.192$ mm &mdash; sai số gấp gần 3 lần PINN).
+      Dải màu xanh lục thể hiện dải dung sai mục tiêu (±0.1 mm cho <i>W</i>, ±0.5 mm cho <i>L</i> và <i>D</i>). 
+      Đặc biệt ở chiều dài <i>L</i>, các điểm của PINN hội tụ chuẩn xác quanh đường <i>y</i> = <i>x</i> (MAE = 0.448 mm), trong khi NoPINN lệch hẳn xuống dưới (MAE = 1.192 mm &mdash; sai số gấp gần 3 lần PINN).
     </div>
   </div>
 </div>
@@ -2221,7 +2479,7 @@
   </div>
   <div class="figure-card">
     <img src="{{B64_F2_LGL}}" alt="Fig 2">
-    <div class="caption"><strong>Hình 7 (PI-LGL Focus):</strong> Phân tích Boxplot sai số chiều dài $L$, chứng minh PINN giảm tới 60% sai số so với Baseline.</div>
+    <div class="caption"><strong>Hình 7 (PI-LGL Focus):</strong> Phân tích Boxplot sai số chiều dài <i>L</i>, chứng minh PINN giảm tới 60% sai số so với Baseline.</div>
   </div>
 </div>
 
@@ -2247,7 +2505,7 @@
   </div>
   <div class="figure-card">
     <img src="{{B64_F2_NEW}}" alt="Fig 11">
-    <div class="caption"><strong>Hình 11 (LODO):</strong> Phân rã sai số kích thước MAE của $W, L, D$ trên phôi lạ chứng minh tính tổng quát hóa cao của PINN.</div>
+    <div class="caption"><strong>Hình 11 (LODO):</strong> Phân rã sai số kích thước MAE của <i>W</i>, <i>L</i>, <i>D</i> trên phôi lạ chứng minh tính tổng quát hóa cao của PINN.</div>
   </div>
 </div>
 
@@ -2288,41 +2546,41 @@
 <h3 class="sub-title">8.3 So Sánh Đối Đầu Trực Diện Theo Cặp: PINN vs NoPINN Baseline (8 Cặp Checkpoint Tương Đồng)</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F3}}" alt="Paired PINN vs Baseline" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 16 (Đối đầu trực diện theo cặp PINN vs Baseline):</strong> So sánh 8 cặp checkpoint tương đồng tuyệt đối về tỷ lệ dữ liệu và seed ngẫu nhiên (1%, 3%, 5% s42, 5% s123, 5% s456, 5% s789, 7%, 10%). (a) Độ lệch Accuracy (%) trên từng cặp; (b) Sai số chiều dài $L$ (mm) và tỷ lệ phần trăm suy giảm sai số nhờ cơ chế Physics Guard của PINN (giảm từ 20% đến hơn 60% sai số chiều dài).</div>
+  <div class="caption"><strong>Hình 16 (Đối đầu trực diện theo cặp PINN vs Baseline):</strong> So sánh 8 cặp checkpoint tương đồng tuyệt đối về tỷ lệ dữ liệu và seed ngẫu nhiên (1%, 3%, 5% s42, 5% s123, 5% s456, 5% s789, 7%, 10%). (a) Độ lệch Accuracy (%) trên từng cặp; (b) Sai số chiều dài <i>L</i> (mm) và tỷ lệ phần trăm suy giảm sai số nhờ cơ chế Physics Guard của PINN (giảm từ 20% đến hơn 60% sai số chiều dài).</div>
 </div>
 
 <h3 class="sub-title">8.4 Đối Đầu 3 Kiến Trúc: CNN vs Multitask MLP vs Xiong MLP Trên 12 Cấu Hình Checkpoint Tương Đồng</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F4}}" alt="Architecture 12 Matched Checkpoints" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 17 (Đối đầu 3 kiến trúc trên 12 cấu hình):</strong> So sánh song song 3 mô hình tương ứng tại mỗi cấu hình kiểm thử (1%, 3%, 5% các seed, các mức &alpha;, 7%, 10%). (a) Accuracy: CNN (xanh đậm) áp đảo hoàn toàn Multitask MLP (~12%) và Xiong MLP (được gắn đầu phân loại phụ ~17% do kiến trúc Xiong gốc là Single-Task Regression); (b) Sai số chiều dài $L$ (thang log): Xiong MLP phân kỳ nghiêm trọng (> 100 mm), trong khi CNN kiểm soát chặt chẽ dưới 1.0 mm.</div>
+  <div class="caption"><strong>Hình 17 (Đối đầu 3 kiến trúc trên 12 cấu hình):</strong> So sánh song song 3 mô hình tương ứng tại mỗi cấu hình kiểm thử (1%, 3%, 5% các seed, các mức &alpha;, 7%, 10%). (a) Accuracy: CNN (xanh đậm) áp đảo hoàn toàn Multitask MLP (~12%) và Xiong MLP (được gắn đầu phân loại phụ ~17% do kiến trúc Xiong gốc là Single-Task Regression); (b) Sai số chiều dài <i>L</i> (thang log): Xiong MLP phân kỳ nghiêm trọng (> 100 mm), trong khi CNN kiểm soát chặt chẽ dưới 1.0 mm.</div>
 </div>
 
 <div class="page-break"></div>
 
-<h3 class="sub-title">8.5 Phân Rã Sai Số Ba Chiều ($W, L, D$) Cho Từng Checkpoint 19 Mô Hình CNN (PI-LGL)</h3>
+<h3 class="sub-title">8.5 Phân Rã Sai Số Ba Chiều (<i>W</i>, <i>L</i>, <i>D</i>) Cho Từng Checkpoint 19 Mô Hình CNN (PI-LGL)</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F5}}" alt="Per-Model WLD Breakdown" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 18 (Phân rã kích thước W, L, D cho 19 checkpoint CNN):</strong> Giá trị sai số MAE riêng biệt của Chiều rộng $W$ (xanh dương), Chiều dài $L$ (đỏ), và Độ sâu $D$ (xanh lục) cho từng mô hình CNN dưới cơ chế PI-LGL. Các checkpoint PINN duy trì sự ổn định đồng đều trên cả 3 trục không gian.</div>
+  <div class="caption"><strong>Hình 18 (Phân rã kích thước W, L, D cho 19 checkpoint CNN):</strong> Giá trị sai số MAE riêng biệt của Chiều rộng <i>W</i> (xanh dương), Chiều dài <i>L</i> (đỏ), và Độ sâu <i>D</i> (xanh lục) cho từng mô hình CNN dưới cơ chế PI-LGL. Các checkpoint PINN duy trì sự ổn định đồng đều trên cả 3 trục không gian.</div>
 </div>
 
 <h3 class="sub-title">8.6 Khảo Sát Chi Tiết Toàn Bộ 24 Checkpoint Kiến Trúc MLP (Multitask MLP vs Xiong MLP)</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F6}}" alt="MLP 24 Checkpoints Detailed" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 19 (Đánh giá chi tiết 24 checkpoint MLP):</strong> (a) Accuracy của 12 checkpoint Multitask MLP và 12 checkpoint Xiong MLP (với đầu phân loại phụ cho bài toán benchmark, do kiến trúc Xiong gốc thuần hồi quy); (b) Sai số chiều dài $L$ (thang log) chứng minh kiến trúc MLP 1D không bảo toàn được cấu trúc không gian 2D, dẫn đến hiện tượng phân kỳ kích thước trên toàn bộ các checkpoint thực nghiệm.</div>
+  <div class="caption"><strong>Hình 19 (Đánh giá chi tiết 24 checkpoint MLP):</strong> (a) Accuracy của 12 checkpoint Multitask MLP và 12 checkpoint Xiong MLP (với đầu phân loại phụ cho bài toán benchmark, do kiến trúc Xiong gốc thuần hồi quy); (b) Sai số chiều dài <i>L</i> (thang log) chứng minh kiến trúc MLP 1D không bảo toàn được cấu trúc không gian 2D, dẫn đến hiện tượng phân kỳ kích thước trên toàn bộ các checkpoint thực nghiệm.</div>
 </div>
 
 <div class="page-break"></div>
 
-<h3 class="sub-title">8.7 Khảo Sát Độ Nhạy Của Từng Kiến Trúc Theo Trọng Số Vật Lý $lpha$</h3>
+<h3 class="sub-title">8.7 Khảo Sát Độ Nhạy Của Từng Kiến Trúc Theo Trọng Số Vật Lý <i>α</i></h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F7}}" alt="Alpha Sensitivity Trajectories" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 20 (Quỹ đạo độ nhạy theo &alpha;):</strong> Đường biến thiên hiệu năng của từng kiến trúc tại tỷ lệ 5% dữ liệu khi thay đổi trọng số ràng buộc vật lý $lpha \in \{0, 1, 10, 100, 1000\}$. Điểm cân bằng tối ưu đạt được tại $lpha = 1$, giúp tối đa hóa độ chính xác phân loại đồng thời giảm thiểu sai số đo đạc chiều dài $L$.</div>
+  <div class="caption"><strong>Hình 20 (Quỹ đạo độ nhạy theo &alpha;):</strong> Đường biến thiên hiệu năng của từng kiến trúc tại tỷ lệ 5% dữ liệu khi thay đổi trọng số ràng buộc vật lý <i>α</i> ∈ {0, 1, 10, 100, 1000}. Điểm cân bằng tối ưu đạt được tại <i>α</i> = 1, giúp tối đa hóa độ chính xác phân loại đồng thời giảm thiểu sai số đo đạc chiều dài <i>L</i>.</div>
 </div>
 
 <h3 class="sub-title">8.8 Bảng Điểm Toàn Diện (Master Scorecard) Cho Toàn Bộ 43 Checkpoint Với Số Liệu Chi Tiết</h3>
 <div class="figure-card" style="margin: 12px 0;">
   <img src="{{B64_COMP_F8}}" alt="Master Scorecard Heatmap" style="max-width: 100%;">
-  <div class="caption"><strong>Hình 21 (Bảng điểm 43 mô hình với số liệu chi tiết trong từng ô):</strong> Ma trận tổng hợp đầy đủ 43 mô hình (19 CNN, 12 Multitask MLP, 12 Xiong MLP). Từng ô hiển thị chính xác giá trị số của Zero-Shot Acc/MAE, Transfer MMD Acc/MAE, PI-LGL Acc, và sai số phân rã $W, L, D$ cùng Overall MAE, cho phép tra cứu trực tiếp toàn bộ dữ liệu thực nghiệm.</div>
+  <div class="caption"><strong>Hình 21 (Bảng điểm 43 mô hình với số liệu chi tiết trong từng ô):</strong> Ma trận tổng hợp đầy đủ 43 mô hình (19 CNN, 12 Multitask MLP, 12 Xiong MLP). Từng ô hiển thị chính xác giá trị số của Zero-Shot Acc/MAE, Transfer MMD Acc/MAE, PI-LGL Acc, và sai số phân rã <i>W</i>, <i>L</i>, <i>D</i> cùng Overall MAE, cho phép tra cứu trực tiếp toàn bộ dữ liệu thực nghiệm.</div>
 </div>
 
 <div class="callout-success">
@@ -2330,7 +2588,7 @@
   <ul>
     <li><strong>CNN vượt trội đồng nhất trên mọi checkpoint:</strong> Độ chính xác thích ứng miền đạt 50%&ndash;100%, Overall MAE luôn được ghìm chặt dưới 0.6 mm.</li>
     <li><strong>MLP sụp đổ có hệ thống:</strong> 100% các checkpoint Multitask MLP và Xiong MLP đều không thể thích ứng miền hiệu quả do mất thông tin topo dòng xoáy 2D.</li>
-    <li><strong>Ràng buộc PINN bảo toàn kích thước vật lý:</strong> Trên tất cả 8 cặp checkpoint tương đồng, PINN giảm sâu sai số chiều dài $L$ từ 20% đến 60% so với Baseline không vật lý.</li>
+    <li><strong>Ràng buộc PINN bảo toàn kích thước vật lý:</strong> Trên tất cả 8 cặp checkpoint tương đồng, PINN giảm sâu sai số chiều dài <i>L</i> từ 20% đến 60% so với Baseline không vật lý.</li>
     <li><strong>PI-LGL kết hợp CNN:</strong> Giải pháp duy nhất vượt qua mọi bài kiểm tra đánh giá khuyết tật NDT chuẩn công nghiệp.</li>
   </ul>
 </div>
