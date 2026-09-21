@@ -1,2 +1,0 @@
-Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
-Physics_Informed_MMD,20,40.0,"[20.0, 65.0]",31.67,31.52,"[14.3, 46.0]",0.229,0.1327,0.392,0.8825,33.2,3.9,44.1,27.1,0.4691,0.6521,-1.048,-0.948

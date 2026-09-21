@@ -1,2 +1,0 @@
-Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
-Real_Only_Scratch,20,50.0,"[30.0, 70.1]",40.0,36.0,"[20.4, 53.3]",0.356,0.2068,2.555,1.026,51.7,25.6,51.3,42.9,1.2626,1.4892,-3.81,-1.318

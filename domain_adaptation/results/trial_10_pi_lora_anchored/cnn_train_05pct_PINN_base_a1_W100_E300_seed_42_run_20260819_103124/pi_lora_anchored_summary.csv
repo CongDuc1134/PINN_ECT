@@ -1,2 +1,0 @@
-Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
-PI_LoRA_Anchored,20,40.0,"[20.0, 60.1]",28.33,30.0,"[13.7, 44.0]",0.216,0.1301,0.3402,0.9603,32.5,3.4,48.0,28.0,0.4769,0.6736,-1.574,-0.933

@@ -1,2 +1,0 @@
-Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
-PI_NPC_Prototype,20,25.0,"[5.0, 45.0]",20.0,21.56,"[5.7, 37.0]",0.014,0.125,0.3792,0.9576,31.2,3.8,47.9,27.6,0.4873,0.7428,-1.46,-0.94

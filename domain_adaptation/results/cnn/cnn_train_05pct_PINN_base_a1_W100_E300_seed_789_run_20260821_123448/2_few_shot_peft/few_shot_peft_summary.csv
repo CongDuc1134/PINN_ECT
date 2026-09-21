@@ -1,2 +1,0 @@
-Method,Num_Samples,Clf_Accuracy (%),Acc_95CI,Balanced_Acc (%),F1_Macro (%),F1_95CI,MCC,MAE_W (mm),MAE_L (mm),MAE_D (mm),NMAE_W (%),NMAE_L (%),NMAE_D (%),Overall_NMAE (%),Overall_MAE (mm),Overall_RMSE (mm),R2_W,R2_D
-FewShot_PEFT,20,45.0,"[25.0, 65.0]",45.0,41.43,"[19.8, 58.2]",0.341,0.192,1.0011,0.9506,48.0,10.0,47.5,35.2,0.7146,0.8604,-4.473,-0.889
