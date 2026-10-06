@@ -80,7 +80,7 @@ def InteT_add3_gpu(X, Y, z, wc, lc, dc, delta, m=20, n=20):
     F = (-2 * YY / lc) * torch.exp(ZZ / delta) * (z - ZZ) * term
     W = get_trapz_weights(m, n, device)
     integral = torch.sum(W * F * h_vec[:, None, None, None], dim=(0, 1)) * ((b - a) / m)
-    sinalfa = dc / torch.sqrt(dc**2 + (lc / 2) ** 2)
+    sinalfa = dc / (torch.sqrt(dc**2 + (lc / 2) ** 2) if torch.is_tensor(dc) else math.sqrt(dc**2 + (lc / 2) ** 2))
     return sinalfa * integral
 
 def calculate_field_Step_T(X, Y, z, wc, lc, dc, delta):

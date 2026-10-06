@@ -1,6 +1,15 @@
 import os
+import sys
 import argparse
 from collections import defaultdict
+
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 def count_csv_files(root_dir):
     total_csv = 0

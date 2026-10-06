@@ -287,6 +287,9 @@ if START_PERCENT > END_PERCENT:
     raise ValueError(f"Invalid range: START_PERCENT={START_PERCENT} > END_PERCENT={END_PERCENT}")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
@@ -455,141 +458,6 @@ DISTINCT_SERIES_COLORS = [
 DISTINCT_SERIES_MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">", "h", "8"]
 
 
-def scan_existing_series():
-    """Dynamically scan output directories to build the series list from actual existing runs."""
-    import re
-    
-    def tag_to_alpha(a_tag):
-        try:
-            return float(a_tag.replace('p', '.'))
-        except ValueError:
-            return None
-
-    def parse_tag(tag):
-        if tag.startswith("NoPINN_seed_"):
-            return {"mode": "no_pinn", "group": "seed"}
-        elif tag.startswith("NoPINN"):
-            return {"mode": "no_pinn", "group": "baseline"}
-        elif tag.startswith("PINN_base_a"):
-            match = re.match(r"PINN_base_a([0-9p]+)_W(\d+)_E\d+", tag)
-            if match:
-                return {"mode": "pinn", "group": "baseline", "alpha": tag_to_alpha(match.group(1)), "warmup": int(match.group(2))}
-        elif tag.startswith("PINN_alpha_a"):
-            match = re.match(r"PINN_alpha_a([0-9p]+)_W(\d+)_E\d+", tag)
-            if match:
-                return {"mode": "pinn", "group": "alpha", "alpha": tag_to_alpha(match.group(1)), "warmup": int(match.group(2))}
-        elif tag.startswith("PINN_warmup_a"):
-            match = re.match(r"PINN_warmup_a([0-9p]+)_W(\d+)_E\d+", tag)
-            if match:
-                return {"mode": "pinn", "group": "warmup", "alpha": tag_to_alpha(match.group(1)), "warmup": int(match.group(2))}
-        elif tag.startswith("PINN_seed_a"):
-            match = re.match(r"PINN_seed_a([0-9p]+)_W(\d+)_E\d+", tag)
-            if match:
-                return {"mode": "pinn", "group": "seed", "alpha": tag_to_alpha(match.group(1)), "warmup": int(match.group(2))}
-        return None
-
-    tags_info = {}
-
-    def scan_dir(root_dir):
-        if not os.path.isdir(root_dir):
-            return
-        for pct_folder in os.listdir(root_dir):
-            match = re.match(r"train_(\d+)pct", pct_folder)
-            if not match:
-                continue
-            pct = int(match.group(1))
-            
-            pct_path = os.path.join(root_dir, pct_folder)
-            if not os.path.isdir(pct_path):
-                continue
-            for run_folder in os.listdir(pct_path):
-                match_run = re.match(r"^(.*)_seed_([0-9a-zA-Z]+)(?:_run_.*)?$", run_folder)
-                if match_run:
-                    tag = match_run.group(1)
-                    seed = match_run.group(2)
-                    
-                    if tag not in tags_info:
-                        parsed = parse_tag(tag)
-                        if parsed is None:
-                            continue
-                        tags_info[tag] = {
-                            "parsed": parsed,
-                            "seeds": set(),
-                            "percents": set()
-                        }
-                    tags_info[tag]["seeds"].add(seed)
-                    tags_info[tag]["percents"].add(pct)
-
-    scan_dir(OUTPUT_NO_PINN_ROOT)
-    scan_dir(OUTPUT_PINN_ROOT)
-
-    new_series = []
-    
-    for tag in sorted(tags_info.keys()):
-        info = tags_info[tag]
-        parsed = info["parsed"]
-        mode = parsed["mode"]
-        group = parsed["group"]
-        
-        if mode == "no_pinn":
-            new_series.append(
-                make_series_item(
-                    key=tag,
-                    label=f"No PINN baseline (E={EPOCHS})" if group == "baseline" else f"No PINN {group}",
-                    short_label="No PINN",
-                    mode="no_pinn",
-                    script=SCRIPT_NO_PINN,
-                    tag=tag,
-                    env={"_MODE": "no_pinn", "EPOCHS": str(EPOCHS), "SERIES_LABEL": f"No PINN {group}"},
-                    color="#1f77b4", 
-                    linestyle="--",
-                    marker="o",
-                    percent_list=sorted(info["percents"]),
-                    seed_list=sorted(info["seeds"]),
-                    group=group,
-                )
-            )
-        else:
-            alpha = parsed.get("alpha")
-            warmup = parsed.get("warmup")
-            a_label = alpha_to_label(alpha) if alpha is not None else "None"
-            
-            if group == "baseline":
-                label = f"PINN baseline a={a_label} W={warmup}"
-            elif group == "warmup":
-                label = f"PINN a={a_label} W={warmup}"
-            else:
-                label = f"PINN alpha={a_label} W={warmup}"
-                
-            short_label = f"a={a_label}" if group == "alpha" else (f"W={warmup}" if group == "warmup" else f"PINN\na={a_label} W={warmup}")
-            
-            new_series.append(
-                make_series_item(
-                    key=tag,
-                    label=label,
-                    short_label=short_label,
-                    mode="pinn",
-                    script=SCRIPT_PINN,
-                    tag=tag,
-                    env={
-                        "_MODE": "pinn",
-                        "EPOCHS": str(EPOCHS),
-                        "PINN_ACTIVATION_EPOCH": str(warmup),
-                        "ALPHA_INIT": f"{alpha:.12g}" if alpha is not None else "",
-                        "SERIES_LABEL": label,
-                    },
-                    color="#d62728",
-                    linestyle="-",
-                    marker="s",
-                    percent_list=sorted(info["percents"]),
-                    seed_list=sorted(info["seeds"]),
-                    alpha=alpha,
-                    warmup=warmup,
-                    group=group,
-                )
-            )
-            
-    return new_series
 
 def apply_distinct_series_styles(series_items):
     """Assign globally distinct plot styles so legends remain readable."""
@@ -996,67 +864,59 @@ def _reeval_imports():
 
 def _build_reeval_model_class(torch, nn):
     class ImprovedMultimodelNet(nn.Module):
-        def __init__(self, num_shapes):
+        def __init__(self, num_shapes, latent_dim=128):
             super().__init__()
             # Learnable uncertainty parameters
             self.log_var_clf = nn.Parameter(torch.tensor(0.0))
             self.log_var_w = nn.Parameter(torch.tensor(0.0))
             self.log_var_l = nn.Parameter(torch.tensor(0.0))
             self.log_var_d = nn.Parameter(torch.tensor(0.0))
+            self.latent_dim = latent_dim
 
+            # ===== COMPACT SHARED BACKBONE =====
+            # Input: (B, 2, 32, 32) -> Compressed Latent Feature: (B, 128)
             self.backbone = nn.Sequential(
+                # Block 1 (32x32 -> 16x16)
                 nn.Conv2d(2, 32, kernel_size=3, padding=1),
                 nn.BatchNorm2d(32),
                 nn.SiLU(),
-                nn.Conv2d(32, 32, kernel_size=3, padding=1),
-                nn.BatchNorm2d(32),
-                nn.SiLU(),
                 nn.MaxPool2d(2, 2),
-                nn.Dropout(0.1),
+                nn.Dropout(0.05),
+
+                # Block 2 (16x16 -> 8x8)
                 nn.Conv2d(32, 64, kernel_size=3, padding=1),
                 nn.BatchNorm2d(64),
                 nn.SiLU(),
-                nn.Conv2d(64, 64, kernel_size=3, padding=1),
-                nn.BatchNorm2d(64),
-                nn.SiLU(),
                 nn.MaxPool2d(2, 2),
-                nn.Dropout(0.1),
+                nn.Dropout(0.05),
+
+                # Block 3 (8x8 -> 1x1 Global Average Pool)
                 nn.Conv2d(64, 128, kernel_size=3, padding=1),
                 nn.BatchNorm2d(128),
                 nn.SiLU(),
-                nn.Conv2d(128, 128, kernel_size=3, padding=1),
-                nn.BatchNorm2d(128),
-                nn.SiLU(),
-                nn.AdaptiveAvgPool2d(4),
-                nn.Dropout(0.1),
+                nn.AdaptiveAvgPool2d((1, 1)),
             )
+
+            # ===== SIMPLE CLASSIFICATION HEAD =====
             self.classifier = nn.Sequential(
-                nn.Linear(128 * 4 * 4, 256),
-                nn.BatchNorm1d(256),
+                nn.Linear(latent_dim, 64),
+                nn.BatchNorm1d(64),
                 nn.SiLU(),
                 nn.Dropout(0.1),
-                nn.Linear(256, 128),
-                nn.BatchNorm1d(128),
-                nn.SiLU(),
-                nn.Dropout(0.1),
-                nn.Linear(128, num_shapes),
+                nn.Linear(64, num_shapes),
             )
+
+            # ===== SIMPLE REGRESSION BACKBONE & HEAD (W, L, D) =====
+            # Sigmoid at the end bounds output to (0, 1) matching normalized targets
             self.regressor_backbone = nn.Sequential(
-                nn.Linear(128 * 4 * 4, 512),
-                nn.BatchNorm1d(512),
-                nn.SiLU(),
-                nn.Dropout(0.1),
-                nn.Linear(512, 256),
-                nn.BatchNorm1d(256),
+                nn.Linear(latent_dim, 64),
+                nn.BatchNorm1d(64),
                 nn.SiLU(),
                 nn.Dropout(0.1),
             )
             self.reg_head = nn.Sequential(
-                nn.Linear(256, 64),
-                nn.BatchNorm1d(64),
-                nn.SiLU(),
-                nn.Dropout(0.05),
                 nn.Linear(64, 3),
+                nn.Sigmoid(),
             )
 
         def forward(self, x):
@@ -1067,20 +927,6 @@ def _build_reeval_model_class(torch, nn):
     return ImprovedMultimodelNet
 
 
-def _reeval_nrmse(y_true, y_pred, eps=1e-8):
-    y_true = np.asarray(y_true, dtype=float)
-    y_pred = np.asarray(y_pred, dtype=float)
-    rmse = float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
-    y_range = float(np.max(y_true) - np.min(y_true))
-    if y_range < eps:
-        return 0.0
-    return float((rmse / y_range) * 100.0)
-
-
-def _reeval_max_error(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=float)
-    y_pred = np.asarray(y_pred, dtype=float)
-    return float(np.max(np.abs(y_true - y_pred)))
 
 
 def save_single_model_feature_visualizations(
@@ -1590,73 +1436,19 @@ def _reeval_load_state(model, checkpoint_path, torch, device):
 
 
 def _save_reeval_fig3_regression_scatter(y_true, y_pred, metrics, output_dir, file_prefix=""):
-    import matplotlib.pyplot as plt
+    from figures_ieee import plot_fig3_regression_scatter
     os.makedirs(output_dir, exist_ok=True)
-    fig3, axes3 = plt.subplots(1, 3, figsize=(14, 4.2))
-    metrics_names = ['Width ($W$, mm)', 'Length ($L$, mm)', 'Depth ($D$, mm)']
-    colors = ['#004c6d', '#c35100', '#4a2c5d']
-    
-    for i in range(3):
-        ax = axes3[i]
-        yt = y_true[:, i]
-        yp = y_pred[:, i]
-        
-        ax.scatter(yt, yp, alpha=0.55, s=25, color=colors[i], edgecolors='white', linewidth=0.3, label='Predictions')
-        
-        min_v = min(float(yt.min()), float(yp.min()))
-        max_v = max(float(yt.max()), float(yp.max()))
-        ax.plot([min_v, max_v], [min_v, max_v], color='#d62728', linestyle='--', linewidth=1.8, label='Ideal ($y=x$)')
-        
-        mae = metrics['mae'][i]
-        r2 = metrics['r2'][i]
-        rmse = metrics['rmse'][i]
-        nrmse = metrics['nrmse'][i]
-        max_err = metrics.get('max_error', [np.nan, np.nan, np.nan])[i]
-        
-        metric_str = (
-            f"MAE: {mae:.4f} mm\n"
-            f"$R^2$: {r2:.4f}\n"
-            f"RMSE: {rmse:.4f} mm\n"
-            f"Max Err: {max_err:.4f} mm\n"
-            f"NRMSE: {nrmse:.2f}%"
-        )
-        ax.text(0.05, 0.95, metric_str, transform=ax.transAxes, fontsize=8.5, verticalalignment='top',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='#cccccc', alpha=0.9))
-        
-        ax.set_xlabel(f'True {metrics_names[i]}', fontweight='bold')
-        ax.set_ylabel(f'Predicted {metrics_names[i]}', fontweight='bold')
-        ax.set_title(f'({chr(97+i)}) {metrics_names[i].split()[0]} Regression', fontweight='bold', pad=8)
-        ax.legend(fontsize=8.5, loc='lower right', frameon=True, facecolor='white', edgecolor='#cccccc')
-        ax.grid(True, linestyle='--', alpha=0.4, linewidth=0.5)
-        
-    plt.tight_layout()
-    fname = f"{file_prefix}fig3_regression_scatter.png" if file_prefix else "fig3_regression_scatter.png"
-    out_path = os.path.join(output_dir, fname)
-    fig3.savefig(out_path, dpi=300, bbox_inches='tight')
-    plt.close(fig3)
-    return out_path
+    fname_prefix = f"{file_prefix}fig3_regression_scatter" if file_prefix else "fig3_regression_scatter"
+    plot_fig3_regression_scatter(y_true, y_pred, output_dir, filename_prefix=fname_prefix)
+    return os.path.join(output_dir, f"{fname_prefix}.png")
 
 
 def _save_reeval_fig2_confusion_matrix(y_shape_true, y_pred_shape, unique_shapes, output_dir, file_prefix=""):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from sklearn.metrics import confusion_matrix
+    from figures_ieee import plot_fig2_confusion_matrix
     os.makedirs(output_dir, exist_ok=True)
-    labels = list(range(len(unique_shapes)))
-    cm = confusion_matrix(y_shape_true, y_pred_shape, labels=labels)
-    cm_norm = cm.astype('float') / (cm.sum(axis=1)[:, np.newaxis] + 1e-8) * 100.0
-    fig2, ax2 = plt.subplots(figsize=(6.5, 5.5))
-    sns.heatmap(cm_norm, annot=True, fmt='.1f', cmap='Blues', xticklabels=unique_shapes, yticklabels=unique_shapes,
-                cbar_kws={'label': 'Accuracy (%)'}, ax=ax2, annot_kws={'size': 10, 'weight': 'bold'})
-    ax2.set_title('Test Set Confusion Matrix (%)', fontweight='bold', fontsize=12, pad=10)
-    ax2.set_ylabel('True Crack Shape', fontweight='bold', fontsize=11)
-    ax2.set_xlabel('Predicted Crack Shape', fontweight='bold', fontsize=11)
-    plt.tight_layout()
-    fname = f"{file_prefix}fig2_confusion_matrix.png" if file_prefix else "fig2_confusion_matrix.png"
-    out_path = os.path.join(output_dir, fname)
-    fig2.savefig(out_path, dpi=300, bbox_inches='tight')
-    plt.close(fig2)
-    return out_path
+    fname_prefix = f"{file_prefix}fig2_confusion_matrix" if file_prefix else "fig2_confusion_matrix"
+    plot_fig2_confusion_matrix(y_shape_true, y_pred_shape, unique_shapes, output_dir, filename_prefix=fname_prefix)
+    return os.path.join(output_dir, f"{fname_prefix}.png")
 
 
 def _reeval_infer_existing_model(run_dir, mode, percent, seed, item):
@@ -3629,9 +3421,6 @@ def _interleave_job_groups(*job_groups):
     return jobs
 
 
-def run_experiment(script_name, env_vars, name, custom_tag, progress_callback=None):
-    jobs = _prepare_experiment_jobs(script_name, env_vars, name, custom_tag, progress_callback)
-    _run_prepared_jobs(jobs, progress_callback)
 
 
 def _prepare_experiment_group_jobs(series_items, start_index, progress_callback=None):

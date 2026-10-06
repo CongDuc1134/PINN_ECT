@@ -1,4 +1,11 @@
 import os
+import sys
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PARENT_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+if _PARENT_DIR not in sys.path:
+    sys.path.insert(0, _PARENT_DIR)
+
 import glob
 import random
 import argparse
@@ -17,6 +24,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from mpl_toolkits.mplot3d import Axes3D
 from library_functions import Load_Data_With_Labels
+from figures_ieee import plot_fig1_training_curves, plot_fig2_confusion_matrix, plot_pca_latent_space
 
 
 def set_seed(seed=42):
@@ -111,22 +119,16 @@ def evaluate_one_epoch(model, loader, criterion, device):
 
 
 def plot_history(history, output_path="training_history.png"):
-    plt.figure(figsize=(12, 5))
-    epochs = range(1, len(history['train_loss']) + 1)
-    
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, history['train_loss'], label='Train Loss')
-    plt.plot(epochs, history['val_loss'], label='Val Loss')
-    plt.title('Loss')
-    plt.legend(); plt.grid(True)
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, history['train_acc'], label='Train Acc')
-    plt.plot(epochs, history['val_acc'], label='Val Acc')
-    plt.title('Accuracy')
-    plt.legend(); plt.grid(True)
-    
-    plt.savefig(output_path)
-    plt.close()
+    """Delegate training curves to figures_ieee IEEE standard."""
+    hist_formatted = {
+        'train_loss': history.get('train_loss', []),
+        'val_loss': history.get('val_loss', []),
+        'train_clf_acc': history.get('train_acc', []),
+        'val_clf_acc': history.get('val_acc', []),
+    }
+    out_dir = os.path.dirname(output_path) or '.'
+    fname_prefix = os.path.splitext(os.path.basename(output_path))[0]
+    plot_fig1_training_curves(hist_formatted, out_dir, filename_prefix=fname_prefix)
 
 def extract_features(model, loader, device):
     model.eval()
@@ -143,26 +145,8 @@ def extract_features(model, loader, device):
 
 
 def plot_pca(features, labels, classes, output_prefix="pca"):
-    if len(features) == 0: return
-    
-    pca2 = PCA(n_components=2)
-    f2d = pca2.fit_transform(features)
-    plt.figure(figsize=(10, 8))
-    for i, cls in enumerate(classes):
-        idx = labels == i
-        plt.scatter(f2d[idx, 0], f2d[idx, 1], label=cls, alpha=0.6)
-    plt.legend(); plt.title("PCA 2D"); plt.grid(True, alpha=0.3)
-    plt.savefig(f"{output_prefix}_2d.png"); plt.close()
-    
-    pca3 = PCA(n_components=3)
-    f3d = pca3.fit_transform(features)
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    for i, cls in enumerate(classes):
-        idx = labels == i
-        ax.scatter(f3d[idx, 0], f3d[idx, 1], f3d[idx, 2], label=cls, alpha=0.6)
-    ax.legend(); ax.set_title("PCA 3D")
-    plt.savefig(f"{output_prefix}_3d.png"); plt.close()
+    """Delegate PCA latent space visualization to figures_ieee IEEE standard."""
+    plot_pca_latent_space(features, labels, classes, output_prefix=output_prefix)
 
 
 def load_and_preprocess_data(data_dir, labels_csv):
@@ -423,11 +407,7 @@ def main():
     
     plot_history(history, output_path=os.path.join(args.checkpoint_dir, "training_history.png"))
     
-    cm = confusion_matrix(all_labels, all_preds)
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt='d', xticklabels=classes, yticklabels=classes, cmap='Blues')
-    plt.title("Confusion Matrix"); plt.tight_layout()
-    plt.savefig(os.path.join(args.checkpoint_dir, "confusion_matrix.png")); plt.close()
+    plot_fig2_confusion_matrix(all_labels, all_preds, classes, args.checkpoint_dir, filename_prefix="confusion_matrix")
 
     print("Generating PCA...")
     feats, lbls = extract_features(model, test_loader, device)

@@ -297,6 +297,9 @@ if START_PERCENT > END_PERCENT:
     raise ValueError(f"Invalid range: START_PERCENT={START_PERCENT} > END_PERCENT={END_PERCENT}")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
@@ -1428,73 +1431,19 @@ def _reeval_load_state(model, checkpoint_path, torch, device):
 
 
 def _save_reeval_fig3_regression_scatter(y_true, y_pred, metrics, output_dir, file_prefix=""):
-    import matplotlib.pyplot as plt
+    from figures_ieee import plot_fig3_regression_scatter
     os.makedirs(output_dir, exist_ok=True)
-    fig3, axes3 = plt.subplots(1, 3, figsize=(14, 4.2))
-    metrics_names = ['Width ($W$, mm)', 'Length ($L$, mm)', 'Depth ($D$, mm)']
-    colors = ['#004c6d', '#c35100', '#4a2c5d']
-    
-    for i in range(3):
-        ax = axes3[i]
-        yt = y_true[:, i]
-        yp = y_pred[:, i]
-        
-        ax.scatter(yt, yp, alpha=0.55, s=25, color=colors[i], edgecolors='white', linewidth=0.3, label='Predictions')
-        
-        min_v = min(float(yt.min()), float(yp.min()))
-        max_v = max(float(yt.max()), float(yp.max()))
-        ax.plot([min_v, max_v], [min_v, max_v], color='#d62728', linestyle='--', linewidth=1.8, label='Ideal ($y=x$)')
-        
-        mae = metrics['mae'][i]
-        r2 = metrics['r2'][i]
-        rmse = metrics['rmse'][i]
-        nrmse = metrics['nrmse'][i]
-        max_err = metrics.get('max_error', [np.nan, np.nan, np.nan])[i]
-        
-        metric_str = (
-            f"MAE: {mae:.4f} mm\n"
-            f"$R^2$: {r2:.4f}\n"
-            f"RMSE: {rmse:.4f} mm\n"
-            f"Max Err: {max_err:.4f} mm\n"
-            f"NRMSE: {nrmse:.2f}%"
-        )
-        ax.text(0.05, 0.95, metric_str, transform=ax.transAxes, fontsize=8.5, verticalalignment='top',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='#cccccc', alpha=0.9))
-        
-        ax.set_xlabel(f'True {metrics_names[i]}', fontweight='bold')
-        ax.set_ylabel(f'Predicted {metrics_names[i]}', fontweight='bold')
-        ax.set_title(f'({chr(97+i)}) {metrics_names[i].split()[0]} Regression', fontweight='bold', pad=8)
-        ax.legend(fontsize=8.5, loc='lower right', frameon=True, facecolor='white', edgecolor='#cccccc')
-        ax.grid(True, linestyle='--', alpha=0.4, linewidth=0.5)
-        
-    plt.tight_layout()
-    fname = f"{file_prefix}fig3_regression_scatter.png" if file_prefix else "fig3_regression_scatter.png"
-    out_path = os.path.join(output_dir, fname)
-    fig3.savefig(out_path, dpi=300, bbox_inches='tight')
-    plt.close(fig3)
-    return out_path
+    fname_prefix = f"{file_prefix}fig3_regression_scatter" if file_prefix else "fig3_regression_scatter"
+    plot_fig3_regression_scatter(y_true, y_pred, output_dir, filename_prefix=fname_prefix)
+    return os.path.join(output_dir, f"{fname_prefix}.png")
 
 
 def _save_reeval_fig2_confusion_matrix(y_shape_true, y_pred_shape, unique_shapes, output_dir, file_prefix=""):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    from sklearn.metrics import confusion_matrix
+    from figures_ieee import plot_fig2_confusion_matrix
     os.makedirs(output_dir, exist_ok=True)
-    labels = list(range(len(unique_shapes)))
-    cm = confusion_matrix(y_shape_true, y_pred_shape, labels=labels)
-    cm_norm = cm.astype('float') / (cm.sum(axis=1)[:, np.newaxis] + 1e-8) * 100.0
-    fig2, ax2 = plt.subplots(figsize=(6.5, 5.5))
-    sns.heatmap(cm_norm, annot=True, fmt='.1f', cmap='Blues', xticklabels=unique_shapes, yticklabels=unique_shapes,
-                cbar_kws={'label': 'Accuracy (%)'}, ax=ax2, annot_kws={'size': 10, 'weight': 'bold'})
-    ax2.set_title('Test Set Confusion Matrix (%)', fontweight='bold', fontsize=12, pad=10)
-    ax2.set_ylabel('True Crack Shape', fontweight='bold', fontsize=11)
-    ax2.set_xlabel('Predicted Crack Shape', fontweight='bold', fontsize=11)
-    plt.tight_layout()
-    fname = f"{file_prefix}fig2_confusion_matrix.png" if file_prefix else "fig2_confusion_matrix.png"
-    out_path = os.path.join(output_dir, fname)
-    fig2.savefig(out_path, dpi=300, bbox_inches='tight')
-    plt.close(fig2)
-    return out_path
+    fname_prefix = f"{file_prefix}fig2_confusion_matrix" if file_prefix else "fig2_confusion_matrix"
+    plot_fig2_confusion_matrix(y_shape_true, y_pred_shape, unique_shapes, output_dir, filename_prefix=fname_prefix)
+    return os.path.join(output_dir, f"{fname_prefix}.png")
 
 
 def _reeval_infer_existing_model(run_dir, mode, percent, seed, item):

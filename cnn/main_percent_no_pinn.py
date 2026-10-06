@@ -220,32 +220,6 @@ def _atomic_write_pickle(obj, path):
                 pass
 
 
-def _atomic_save_fig(fig_or_plt, path, **savefig_kwargs):
-    dirname = os.path.dirname(path)
-    if dirname and not os.path.exists(dirname):
-        os.makedirs(dirname, exist_ok=True)
-    tmp = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, dir=dirname, prefix='.tmp_', suffix='.png') as tf:
-            tmp = tf.name
-        # fig_or_plt may be matplotlib.pyplot module or a Figure
-        try:
-            # if it's plt module
-            if hasattr(fig_or_plt, 'savefig'):
-                fig_or_plt.savefig(tmp, **savefig_kwargs)
-            else:
-                fig_or_plt.savefig(tmp, **savefig_kwargs)
-        except Exception:
-            # fallback to pyplot
-            import matplotlib.pyplot as _plt
-            _plt.savefig(tmp, **savefig_kwargs)
-        os.replace(tmp, path)
-    finally:
-        if tmp and os.path.exists(tmp):
-            try:
-                os.remove(tmp)
-            except Exception:
-                pass
 
 
 def _atomic_write_text(text, path, mode='w', encoding='utf-8'):
@@ -266,34 +240,6 @@ def _atomic_write_text(text, path, mode='w', encoding='utf-8'):
                 pass
 
 
-def _save_per_class_accuracy_plot(y_true, y_pred, class_labels, output_path, title="Per-class Accuracy"):
-    """Compute per-class recall (accuracy) and save bar chart atomically."""
-    try:
-        from sklearn.metrics import precision_recall_fscore_support
-        _, recall, _, support = precision_recall_fscore_support(y_true, y_pred, labels=range(len(class_labels)), zero_division=0)
-    except Exception:
-        recall = []
-        support = []
-        for cls_idx in range(len(class_labels)):
-            mask = (y_true == cls_idx)
-            support.append(int(mask.sum()))
-            if mask.sum() == 0:
-                recall.append(0.0)
-            else:
-                recall.append(float((y_pred[mask] == cls_idx).sum()) / float(mask.sum()))
-
-    acc_percent = [r * 100.0 for r in recall]
-    fig, ax = plt.subplots(figsize=(max(6, len(class_labels)*0.8), 4))
-    bars = ax.bar(class_labels, acc_percent, color='tab:blue', alpha=0.85)
-    ax.set_ylim(0, 100)
-    ax.set_ylabel('Accuracy (%)', fontweight='bold')
-    ax.set_title(title, fontweight='bold')
-    ax.grid(axis='y', alpha=0.3)
-    for i, v in enumerate(acc_percent):
-        ax.text(i, v + 1.5, f"{v:.1f}%\n(n={support[i]})", ha='center', fontsize=9)
-    plt.tight_layout()
-    _atomic_save_fig(plt, output_path, dpi=150, bbox_inches='tight')
-    plt.close()
 
 
 def _build_class_metrics_df(y_true, y_pred, class_labels, train_percent, pinn_alpha=0.0, pinn_active=False):
@@ -467,632 +413,19 @@ def format_time(seconds):
 TRAIN_LINE_COLOR = 'blue'
 VAL_LINE_COLOR = 'red'
 
-def _set_ieee_style():
-    """Apply IEEE Journal publication style parameters to matplotlib"""
-    plt.rcParams.update({
-        'font.family': 'serif',
-        'font.serif': ['Times New Roman', 'DejaVu Serif'],
-        'axes.labelsize': 11,
-        'axes.titlesize': 12,
-        'xtick.labelsize': 10,
-        'ytick.labelsize': 10,
-        'legend.fontsize': 9,
-        'figure.titlesize': 13,
-        'text.usetex': False,
-    })
-
-def plot_fig1_training_curves(history, output_dir):
-    """fig1_training_curves.png - IEEE Publication Quality Training Curves"""
-    _set_ieee_style()
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
-    
-    epochs = np.arange(1, len(history.get('train_loss', [])) + 1)
-    markevery = max(1, len(epochs) // 10)
-    
-    # Subplot (a): Total & Data Loss
-    axes[0].plot(epochs, history.get('train_loss', []), label='Train Loss', color='#1f77b4', linewidth=1.8, marker='o', markersize=4, markevery=markevery)
-    axes[0].plot(epochs, history.get('val_loss', []), label='Val Loss', color='#d62728', linestyle='--', linewidth=1.8, marker='s', markersize=4, markevery=markevery)
-    axes[0].set_xlabel('Epoch', fontweight='bold')
-    axes[0].set_ylabel('Loss', fontweight='bold')
-    axes[0].set_title('(a) Total Loss Convergence', fontweight='bold', pad=8)
-    axes[0].legend(frameon=True, facecolor='white', edgecolor='#cccccc', framealpha=0.9)
-    axes[0].grid(True, linestyle='--', alpha=0.4, linewidth=0.5)
-    
-    # Subplot (b): Classification Accuracy
-    if len(history.get('val_clf_acc', [])) > 0:
-        axes[1].plot(epochs, [acc * 100 for acc in history.get('train_clf_acc', [])], label='Train Acc', color='#2ca02c', linewidth=1.8, marker='^', markersize=4, markevery=markevery)
-        axes[1].plot(epochs, [acc * 100 for acc in history.get('val_clf_acc', [])], label='Val Acc', color='#ff7f0e', linestyle='--', linewidth=1.8, marker='v', markersize=4, markevery=markevery)
-    axes[1].set_xlabel('Epoch', fontweight='bold')
-    axes[1].set_ylabel('Accuracy (%)', fontweight='bold')
-    axes[1].set_title('(b) Classification Accuracy', fontweight='bold', pad=8)
-    axes[1].set_ylim([0, 105])
-    axes[1].legend(frameon=True, facecolor='white', edgecolor='#cccccc', framealpha=0.9)
-    axes[1].grid(True, linestyle='--', alpha=0.4, linewidth=0.5)
-    
-    plt.tight_layout()
-    _atomic_save_fig(plt, os.path.join(output_dir, 'fig1_training_curves.png'), dpi=300)
-    plt.close(fig)
-
-def plot_fig2_confusion_matrix(y_true, y_pred, unique_shapes, output_dir):
-    """fig2_confusion_matrix.png - IEEE Normalized Confusion Matrix"""
-    _set_ieee_style()
-    cm = confusion_matrix(y_true, y_pred)
-    cm_norm = cm.astype('float') / (cm.sum(axis=1)[:, np.newaxis] + 1e-8) * 100.0
-    
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
-    sns.heatmap(cm_norm, annot=True, fmt='.1f', cmap='Blues', xticklabels=unique_shapes, yticklabels=unique_shapes,
-                cbar_kws={'label': 'Accuracy (%)'}, ax=ax, annot_kws={'size': 10, 'weight': 'bold'})
-    ax.set_title('Test Set Confusion Matrix (%)', fontweight='bold', fontsize=12, pad=10)
-    ax.set_ylabel('True Crack Shape', fontweight='bold', fontsize=11)
-    ax.set_xlabel('Predicted Crack Shape', fontweight='bold', fontsize=11)
-    plt.tight_layout()
-    _atomic_save_fig(plt, os.path.join(output_dir, 'fig2_confusion_matrix.png'), dpi=300)
-    plt.close(fig)
-
-def plot_fig3_regression_scatter(y_true_wld, y_pred_wld, output_dir):
-    """fig3_regression_scatter.png - IEEE Ground Truth vs Prediction 1x3 Grid"""
-    _set_ieee_style()
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.2))
-    metrics_names = ['Width ($W$, mm)', 'Length ($L$, mm)', 'Depth ($D$, %)']
-    colors = ['#004c6d', '#c35100', '#4a2c5d']
-    
-    for i in range(3):
-        ax = axes[i]
-        yt = y_true_wld[:, i]
-        yp = y_pred_wld[:, i]
-        
-        ax.scatter(yt, yp, alpha=0.55, s=25, color=colors[i], edgecolors='white', linewidth=0.3, label='Predictions')
-        
-        min_v = min(yt.min(), yp.min())
-        max_v = max(yt.max(), yp.max())
-        ax.plot([min_v, max_v], [min_v, max_v], color='#d62728', linestyle='--', linewidth=1.8, label='Ideal ($y=x$)')
-        
-        mae = mean_absolute_error(yt, yp)
-        r2 = r2_score(yt, yp)
-        rmse = np.sqrt(mean_squared_error(yt, yp))
-        max_err = np.max(np.abs(yt - yp))
-        nrmse = calculate_nrmse(yt, yp)
-        
-        # Professional IEEE Text box metrics display (Q1 Standard)
-        metric_str = f"MAE = {mae:.4f} mm\n$R^2$ = {r2:.4f}\nRMSE = {rmse:.4f} mm\nNRMSE = {nrmse:.2f}%\nMax Err = {max_err:.4f} mm"
-        ax.text(0.05, 0.95, metric_str, transform=ax.transAxes, fontsize=9.0, verticalalignment='top',
-                bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='#cccccc', alpha=0.9))
-        
-        ax.set_xlabel(f'True {metrics_names[i]}', fontweight='bold')
-        ax.set_ylabel(f'Predicted {metrics_names[i]}', fontweight='bold')
-        ax.set_title(f'({chr(97+i)}) {metrics_names[i].split()[0]} Regression', fontweight='bold', pad=8)
-        ax.legend(fontsize=8.5, loc='lower right', frameon=True, facecolor='white', edgecolor='#cccccc')
-        ax.grid(True, linestyle='--', alpha=0.4, linewidth=0.5)
-        
-    plt.tight_layout()
-    _atomic_save_fig(plt, os.path.join(output_dir, 'fig3_regression_scatter.png'), dpi=300)
-    plt.close(fig)
-
-
-def plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, output_dir, title_suffix=""):
-    """
-    fig4_tsne_latent_space.png / .pdf - Publication-Grade (Q1/Q2 Journal Standard) t-SNE Visualizations
-    Produces high-resolution (300 DPI PNG + vector PDF) figures:
-      1. Backbone t-SNE by Crack Shape
-      2. Regression Embedding t-SNE by Crack Shape
-      3. Regression Manifold colored by continuous W, L, D (mm)
-      4. 2-Panel Composite (Backbone vs Regression)
-      5. 4-Panel Composite Physics Geometry Manifold
-    """
-    try:
-        from sklearn.manifold import TSNE
-        from sklearn.decomposition import PCA
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-        import inspect
-
-        model.eval()
-        backbone_parts = []
-        reg_parts = []
-        with torch.no_grad():
-            for batch_X, _, _ in test_loader:
-                batch_X = batch_X.to(device)
-                b_feat = model.backbone(batch_X)
-                b_feat = b_feat.view(b_feat.size(0), -1)
-                r_feat = model.regressor_backbone(b_feat)
-                backbone_parts.append(b_feat.cpu().numpy())
-                reg_parts.append(r_feat.cpu().numpy())
-
-        backbone_feats = np.concatenate(backbone_parts, axis=0)
-        reg_feats = np.concatenate(reg_parts, axis=0)
-        class_ids = np.asarray(y_shape_test)
-        true_wld = np.asarray(y_test_denorm)
-
-        rng = np.random.default_rng(42)
-        keep = np.arange(len(class_ids))
-        if len(keep) > 750:
-            keep = np.sort(rng.choice(keep, size=750, replace=False))
-        class_ids = class_ids[keep]
-        true_wld = true_wld[keep]
-
-        pub_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f"]
-        reg_cmaps = {"W": "viridis", "L": "plasma", "D": "turbo"}
-        unit_map = {"W": "mm", "L": "mm", "D": "mm"}
-
-        projections = {}
-        metrics_dict = {}
-
-        for fkey, flabel, raw_f in [
-            ("backbone", "Shared Backbone", backbone_feats),
-            ("regression", "Regression Embedding", reg_feats),
-        ]:
-            feat_subset = np.asarray(raw_f)[keep]
-            scaled = StandardScaler().fit_transform(feat_subset)
-            pre_dim = min(50, scaled.shape[1], scaled.shape[0] - 1)
-            pre_pca = PCA(n_components=pre_dim, random_state=42).fit_transform(scaled)
-            perp = min(30.0, max(5.0, (len(pre_pca) - 1) / 3.0))
-
-            tsne_sig = inspect.signature(TSNE)
-            lr_def = tsne_sig.parameters["learning_rate"].default
-            tsne_kw = {
-                "n_components": 2,
-                "perplexity": perp,
-                "learning_rate": "auto" if isinstance(lr_def, str) else 200.0,
-                "init": "pca",
-                "random_state": 42,
-                "method": "barnes_hut",
-                "n_jobs": -1,
-            }
-            iter_arg = "max_iter" if "max_iter" in tsne_sig.parameters else "n_iter"
-            tsne_kw[iter_arg] = 1000
-            tsne_proj = TSNE(**tsne_kw).fit_transform(pre_pca)
-            projections[fkey] = tsne_proj
-
-            if len(np.unique(class_ids)) > 1:
-                sil = float(silhouette_score(scaled, class_ids))
-                cal = float(calinski_harabasz_score(scaled, class_ids))
-                dav = float(davies_bouldin_score(scaled, class_ids))
-            else:
-                sil = cal = dav = float("nan")
-            metrics_dict[fkey] = {"silhouette": sil, "calinski": cal, "davies": dav}
-
-            # Individual Large High-Res Plot (fig4)
-            fig, ax = plt.subplots(figsize=(11, 8.5), dpi=300)
-            for c_idx, c_name in enumerate(unique_shapes):
-                mask = class_ids == c_idx
-                ax.scatter(
-                    tsne_proj[mask, 0],
-                    tsne_proj[mask, 1],
-                    s=65,
-                    alpha=0.82,
-                    color=pub_colors[c_idx % len(pub_colors)],
-                    edgecolors="black",
-                    linewidth=0.35,
-                    label=c_name,
-                )
-            ax.set_xlabel(r"$\mathbf{t\text{-}SNE\ Dimension\ 1}$", fontsize=16, fontweight="bold")
-            ax.set_ylabel(r"$\mathbf{t\text{-}SNE\ Dimension\ 2}$", fontsize=16, fontweight="bold")
-            ax.tick_params(axis="both", which="major", labelsize=14)
-            t_suf = f" ({title_suffix})" if title_suffix else ""
-            ax.set_title(f"{flabel} t-SNE by Crack Shape{t_suf}", fontsize=17, fontweight="bold", pad=12)
-            ax.grid(True, linestyle="--", alpha=0.3, linewidth=0.7)
-            ax.legend(
-                title="Crack Shape",
-                title_fontsize=14,
-                fontsize=13,
-                bbox_to_anchor=(1.02, 1),
-                loc="upper left",
-                frameon=True,
-                facecolor="white",
-                edgecolor="#cccccc",
-                framealpha=0.95,
-            )
-
-            if np.isfinite(sil):
-                ax.text(
-                    0.03, 0.97,
-                    f"Silhouette (S): {sil:.3f}\nDBI: {dav:.3f}\nCH: {cal:.1f}",
-                    transform=ax.transAxes,
-                    fontsize=12,
-                    fontweight="bold",
-                    verticalalignment="top",
-                    bbox=dict(boxstyle="round,pad=0.5", facecolor="white", edgecolor="#888888", alpha=0.92),
-                )
-            fig.tight_layout()
-            for ext in (".png", ".pdf"):
-                _atomic_save_fig(plt, os.path.join(output_dir, f"fig4_tsne_{fkey}_by_class{ext}"), dpi=300)
-            plt.close(fig)
-
-        # 2-Panel Composite (Backbone vs Regression)
-        fig, axes = plt.subplots(1, 2, figsize=(20, 8.5), dpi=300)
-        for s_idx, (fk, fl) in enumerate([("backbone", "Shared Backbone"), ("regression", "Regression Embedding")]):
-            ax = axes[s_idx]
-            proj = projections[fk]
-            for c_idx, c_name in enumerate(unique_shapes):
-                mask = class_ids == c_idx
-                ax.scatter(
-                    proj[mask, 0],
-                    proj[mask, 1],
-                    s=60,
-                    alpha=0.82,
-                    color=pub_colors[c_idx % len(pub_colors)],
-                    edgecolors="black",
-                    linewidth=0.35,
-                    label=c_name,
-                )
-            ax.set_xlabel(r"$\mathbf{t\text{-}SNE\ Dim\ 1}$", fontsize=15, fontweight="bold")
-            ax.set_ylabel(r"$\mathbf{t\text{-}SNE\ Dim\ 2}$", fontsize=15, fontweight="bold")
-            ax.tick_params(axis="both", which="major", labelsize=13)
-            ax.set_title(f"({chr(97 + s_idx)}) {fl} Latent Space", fontsize=17, fontweight="bold", pad=10)
-            ax.grid(True, linestyle="--", alpha=0.3, linewidth=0.7)
-
-            sil = metrics_dict[fk]["silhouette"]
-            if np.isfinite(sil):
-                ax.text(
-                    0.03, 0.97,
-                    f"Silhouette: {sil:.3f}\nDBI: {metrics_dict[fk]['davies']:.3f}\nCH: {metrics_dict[fk]['calinski']:.1f}",
-                    transform=ax.transAxes,
-                    fontsize=12,
-                    fontweight="bold",
-                    verticalalignment="top",
-                    bbox=dict(boxstyle="round,pad=0.4", facecolor="white", edgecolor="#888888", alpha=0.92),
-                )
-            if s_idx == 1:
-                ax.legend(
-                    title="Crack Shape",
-                    title_fontsize=13,
-                    fontsize=12,
-                    loc="upper right",
-                    frameon=True,
-                    facecolor="white",
-                    edgecolor="#cccccc",
-                    framealpha=0.95,
-                )
-        fig.suptitle(f"t-SNE Latent Space Representation{t_suf}", fontsize=19, fontweight="bold", y=0.99)
-        fig.tight_layout()
-        for ext in (".png", ".pdf"):
-            _atomic_save_fig(plt, os.path.join(output_dir, f"fig4_composite_tsne_2panel{ext}"), dpi=300)
-        plt.close(fig)
-
-        # 4-Panel Composite Geometry Manifold
-        r_proj = projections["regression"]
-        fig, axes = plt.subplots(2, 2, figsize=(18, 15), dpi=300)
-        ax_sh = axes[0, 0]
-        for c_idx, c_name in enumerate(unique_shapes):
-            mask = class_ids == c_idx
-            ax_sh.scatter(
-                r_proj[mask, 0],
-                r_proj[mask, 1],
-                s=60,
-                alpha=0.82,
-                color=pub_colors[c_idx % len(pub_colors)],
-                edgecolors="black",
-                linewidth=0.35,
-                label=c_name,
-            )
-        ax_sh.set_title("(a) Shape Class Distribution", fontsize=16, fontweight="bold", pad=8)
-        ax_sh.set_xlabel(r"$\mathbf{t\text{-}SNE\ Dim\ 1}$", fontsize=14, fontweight="bold")
-        ax_sh.set_ylabel(r"$\mathbf{t\text{-}SNE\ Dim\ 2}$", fontsize=14, fontweight="bold")
-        ax_sh.tick_params(axis="both", which="major", labelsize=13)
-        ax_sh.grid(True, linestyle="--", alpha=0.3, linewidth=0.7)
-        ax_sh.legend(title="Shape", title_fontsize=12, fontsize=11, loc="upper right", frameon=True, facecolor="white", edgecolor="#cccccc", framealpha=0.95)
-
-        for t_idx, (t_name, t_ax, p_label) in enumerate([
-            ("W", axes[0, 1], "(b) Crack Width $W$ (mm)"),
-            ("L", axes[1, 0], "(c) Crack Length $L$ (mm)"),
-            ("D", axes[1, 1], "(d) Crack Depth $D$ (mm)"),
-        ]):
-            sc = t_ax.scatter(
-                r_proj[:, 0],
-                r_proj[:, 1],
-                c=true_wld[:, t_idx],
-                cmap=reg_cmaps[t_name],
-                s=65,
-                alpha=0.85,
-                edgecolors="black",
-                linewidth=0.3,
-            )
-            cb = fig.colorbar(sc, ax=t_ax, fraction=0.046, pad=0.04)
-            cb.set_label(f"True {t_name} ({unit_map[t_name]})", fontsize=13, fontweight="bold")
-            cb.ax.tick_params(labelsize=12)
-            t_ax.set_title(p_label, fontsize=16, fontweight="bold", pad=8)
-            t_ax.set_xlabel(r"$\mathbf{t\text{-}SNE\ Dim\ 1}$", fontsize=14, fontweight="bold")
-            t_ax.set_ylabel(r"$\mathbf{t\text{-}SNE\ Dim\ 2}$", fontsize=14, fontweight="bold")
-            t_ax.tick_params(axis="both", which="major", labelsize=13)
-            t_ax.grid(True, linestyle="--", alpha=0.3, linewidth=0.7)
-
-        fig.suptitle(f"Physics Geometry Disentanglement on t-SNE Manifold{t_suf}", fontsize=19, fontweight="bold", y=0.99)
-        fig.tight_layout()
-        for ext in (".png", ".pdf"):
-            _atomic_save_fig(plt, os.path.join(output_dir, f"fig4_composite_manifold_4panel{ext}"), dpi=300)
-        plt.close(fig)
-
-        print(f"[OK] Publication t-SNE Figures saved to: {output_dir}")
-    except Exception as e:
-        print(f"[WARNING] Could not generate t-SNE visualization: {e}")
-
-
-
-def generate_comprehensive_metrics_visualizations(test_metrics, clf_acc, prec, rec, f1, 
-                                                  y_test_denorm, y_pred_wld_denorm, y_shape_test, 
-                                                  unique_shapes, output_dir):
-    """Generate paper-ready publication quality metric visualizations and violin plots for test set."""
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import numpy as np
-    import pandas as pd
-    
-    print("\n" + "="*80)
-    print("GENERATING COMPREHENSIVE PAPER-QUALITY METRIC VISUALIZATIONS & VIOLIN PLOTS")
-    print("="*80)
-    
-    sns.set_theme(style="whitegrid")
-    plt.rcParams.update({
-        'font.family': 'sans-serif',
-        'font.size': 11,
-        'axes.labelsize': 13,
-        'axes.titlesize': 14,
-        'xtick.labelsize': 11,
-        'ytick.labelsize': 11,
-        'legend.fontsize': 11,
-        'figure.titlesize': 16
-    })
-
-    metrics_names = ['Width (W)', 'Length (L)', 'Depth (D)']
-    paper_colors = ['#004c6d', '#c35100', '#6b2d5c']
-    
-    # 1. REGRESSION METRICS COMPARISON (Q1 Standard)
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle('Comprehensive Regression Metrics (Q1 Standard) - Test Set', fontsize=16, fontweight='bold')
-    
-    # MAE
-    ax = axes[0, 0]
-    mae_vals = test_metrics['mae']
-    ax.bar(metrics_names, mae_vals, color=paper_colors, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('MAE (mm)', fontweight='bold')
-    ax.set_title('Mean Absolute Error (MAE)', fontweight='bold')
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    for i, v in enumerate(mae_vals):
-        ax.text(i, v * 1.02, f'{v:.4f}', ha='center', va='bottom', fontweight='bold')
-    
-    # RMSE
-    ax = axes[0, 1]
-    rmse_vals = test_metrics['rmse']
-    ax.bar(metrics_names, rmse_vals, color=paper_colors, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('RMSE (mm)', fontweight='bold')
-    ax.set_title('Root Mean Squared Error (RMSE)', fontweight='bold')
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    for i, v in enumerate(rmse_vals):
-        ax.text(i, v * 1.02, f'{v:.4f}', ha='center', va='bottom', fontweight='bold')
-    
-    # R²
-    ax = axes[0, 2]
-    r2_vals = test_metrics['r2']
-    ax.bar(metrics_names, r2_vals, color=paper_colors, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('R² Score', fontweight='bold')
-    ax.set_title('Coefficient of Determination ($R^2$)', fontweight='bold')
-    ax.set_ylim([0, 1.05])
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    for i, v in enumerate(r2_vals):
-        ax.text(i, max(v * 0.95, 0.05), f'{v:.4f}', ha='center', va='bottom', fontweight='bold', color='white' if v > 0.5 else 'black')
-    
-    # Max Error
-    ax = axes[1, 0]
-    max_err_vals = test_metrics.get('max_error', [np.max(np.abs(y_test_denorm[:, j] - y_pred_wld_denorm[:, j])) for j in range(3)])
-    ax.bar(metrics_names, max_err_vals, color=paper_colors, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('Max Error (mm)', fontweight='bold')
-    ax.set_title('Maximum Absolute Error', fontweight='bold')
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    for i, v in enumerate(max_err_vals):
-        ax.text(i, v * 1.02, f'{v:.4f}', ha='center', va='bottom', fontweight='bold')
-
-    # NRMSE
-    ax = axes[1, 1]
-    nrmse_vals = test_metrics.get('nrmse', [calculate_nrmse(y_test_denorm[:, j], y_pred_wld_denorm[:, j]) for j in range(3)])
-    ax.bar(metrics_names, nrmse_vals, color=paper_colors, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('NRMSE (%)', fontweight='bold')
-    ax.set_title('Normalized RMSE (%)', fontweight='bold')
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    for i, v in enumerate(nrmse_vals):
-        ax.text(i, v * 1.02, f'{v:.2f}%', ha='center', va='bottom', fontweight='bold')
-
-    # Summary box
-    axes[1, 2].axis('off')
-    summary_text = "Regression Summary (Q1):\n\n"
-    summary_text += f"MAE Avg:       {np.mean(mae_vals):.4f} mm\n"
-    summary_text += f"RMSE Avg:      {np.mean(rmse_vals):.4f} mm\n"
-    summary_text += f"R² Avg:        {np.mean(r2_vals):.4f}\n"
-    summary_text += f"Max Error Avg: {np.mean(max_err_vals):.4f} mm\n"
-    summary_text += f"NRMSE Avg:     {np.mean(nrmse_vals):.2f}%\n"
-    axes[1, 2].text(0.1, 0.5, summary_text, transform=axes[1, 2].transAxes, fontsize=12,
-                    verticalalignment='center', family='monospace',
-                    bbox=dict(boxstyle='round,pad=0.6', facecolor='wheat', alpha=0.5))
-    
-    plt.tight_layout()
-    regression_metrics_path = os.path.join(output_dir, 'all_regression_metrics_comparison.png')
-    _atomic_save_fig(plt, regression_metrics_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 2. CLASSIFICATION METRICS (Q1 Standard)
-    fig, ax = plt.subplots(figsize=(10, 5.5))
-    bal_acc = float(balanced_accuracy_score(y_shape_test, grid_pred_shape if 'grid_pred_shape' in locals() else y_shape_test))
-    f1_macro = float(f1_score(y_shape_test, grid_pred_shape if 'grid_pred_shape' in locals() else y_shape_test, average='macro', zero_division=0))
-    mcc = float(matthews_corrcoef(y_shape_test, grid_pred_shape if 'grid_pred_shape' in locals() else y_shape_test))
-    metrics = ['Accuracy (%)', 'Balanced Acc (%)', 'F1-Macro (%)', 'MCC']
-    values = [clf_acc * 100.0, bal_acc * 100.0, f1_macro * 100.0, mcc]
-    colors_clf = ['#003f5c', '#7a5195', '#ef5675', '#ffa600']
-    
-    bars = ax.bar(metrics, values, color=colors_clf, alpha=0.9, edgecolor='black', linewidth=1.2)
-    ax.set_ylabel('Score / Percentage', fontweight='bold', fontsize=12)
-    ax.set_title('Classification Metrics (Q1 Standard) - Test Set', fontweight='bold', fontsize=14)
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    
-    for bar, val in zip(bars, values):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.02 if height < 1.0 else height + 1.0,
-                f'{val:.4f}' if abs(val) <= 1.0 else f'{val:.2f}%', ha='center', va='bottom', fontweight='bold')
-    
-    plt.tight_layout()
-    clf_metrics_path = os.path.join(output_dir, 'all_classification_metrics.png')
-    _atomic_save_fig(plt, clf_metrics_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 3. PREDICTIONS vs TRUE
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    fig.suptitle('Predictions vs Ground Truth - Test Set', fontsize=15, fontweight='bold')
-    
-    for i, (ax, name, color) in enumerate(zip(axes, metrics_names, paper_colors)):
-        y_true = y_test_denorm[:, i]
-        y_pred = y_pred_wld_denorm[:, i]
-        
-        ax.scatter(y_true, y_pred, alpha=0.6, s=25, color=color, edgecolors='k', linewidth=0.3)
-        min_val = min(y_true.min(), y_pred.min())
-        max_val = max(y_true.max(), y_pred.max())
-        ax.plot([min_val, max_val], [min_val, max_val], color='#d62728', linestyle='--', linewidth=2.5, label='Ideal ($y=x$)')
-        ax.set_xlabel(f'True {name}', fontweight='bold')
-        ax.set_ylabel(f'Predicted {name}', fontweight='bold')
-        ax.set_title(f'{name}\n$R^2={test_metrics["r2"][i]:.4f}$, RMSE={test_metrics["rmse"][i]:.4f}', fontweight='bold')
-        ax.grid(True, linestyle=':', alpha=0.6)
-        ax.legend(loc='upper left')
-    
-    plt.tight_layout()
-    scatter_path = os.path.join(output_dir, 'all_predictions_vs_true.png')
-    _atomic_save_fig(plt, scatter_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 4. RESIDUALS
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    fig.suptitle('Residuals - Test Set', fontsize=15, fontweight='bold')
-    for i, (ax, name, color) in enumerate(zip(axes, metrics_names, paper_colors)):
-        y_true = y_test_denorm[:, i]
-        y_pred = y_pred_wld_denorm[:, i]
-        residuals = y_true - y_pred
-        ax.scatter(y_pred, residuals, alpha=0.6, s=25, color=color, edgecolors='k', linewidth=0.3)
-        ax.axhline(y=0, color='#d62728', linestyle='--', linewidth=2.5)
-        ax.set_xlabel(f'Predicted {name}', fontweight='bold')
-        ax.set_ylabel(f'Residual (True - Pred)', fontweight='bold')
-        ax.set_title(f'{name} Residuals\nMean={np.mean(residuals):.4f}, Std={np.std(residuals):.4f}', fontweight='bold')
-        ax.grid(True, linestyle=':', alpha=0.6)
-    plt.tight_layout()
-    residual_path = os.path.join(output_dir, 'all_residuals_plots.png')
-    _atomic_save_fig(plt, residual_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    # 5. ERROR DISTRIBUTION
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    fig.suptitle('Error Distribution - Test Set', fontsize=15, fontweight='bold')
-    for i, (ax, name, color) in enumerate(zip(axes, metrics_names, paper_colors)):
-        y_true = y_test_denorm[:, i]
-        y_pred = y_pred_wld_denorm[:, i]
-        errors = np.abs(y_true - y_pred)
-        ax.hist(errors, bins=30, color=color, alpha=0.85, edgecolor='black', linewidth=1.0)
-        ax.axvline(x=np.mean(errors), color='#d62728', linestyle='--', linewidth=2, label=f'Mean={np.mean(errors):.4f}')
-        ax.axvline(x=np.median(errors), color='#2ca02c', linestyle=':', linewidth=2, label=f'Median={np.median(errors):.4f}')
-        ax.set_xlabel('Absolute Error', fontweight='bold')
-        ax.set_ylabel('Frequency', fontweight='bold')
-        ax.set_title(f'{name} Error Distribution', fontweight='bold')
-        ax.legend(loc='upper right')
-        ax.grid(axis='y', linestyle='--', alpha=0.5)
-    plt.tight_layout()
-    error_dist_path = os.path.join(output_dir, 'all_error_distributions.png')
-    _atomic_save_fig(plt, error_dist_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    # 6. ERROR HEATMAP
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    fig.suptitle('Error Heatmap (grouped by True Value)', fontsize=15, fontweight='bold')
-    for i, (ax, name, color) in enumerate(zip(axes, metrics_names, paper_colors)):
-        y_true = y_test_denorm[:, i]
-        y_pred = y_pred_wld_denorm[:, i]
-        errors = np.abs(y_true - y_pred)
-        h = ax.hist2d(y_true, errors, bins=[20, 20], cmap='YlOrRd')
-        ax.set_xlabel(f'True {name}', fontweight='bold')
-        ax.set_ylabel('Absolute Error', fontweight='bold')
-        ax.set_title(f'{name} Error vs True Value', fontweight='bold')
-        plt.colorbar(h[3], ax=ax, label='Count')
-    plt.tight_layout()
-    heatmap_path = os.path.join(output_dir, 'all_error_heatmaps.png')
-    _atomic_save_fig(plt, heatmap_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    # 7. VIOLIN PLOT: True vs Pred
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5.5))
-    for i, (ax, name) in enumerate(zip(axes, metrics_names)):
-        v_data = pd.DataFrame({
-            'Value': np.concatenate([y_test_denorm[:, i], y_pred_wld_denorm[:, i]]),
-            'Type': ['True Ground Truth'] * len(y_test_denorm) + ['Model Prediction'] * len(y_pred_wld_denorm)
-        })
-        sns.violinplot(
-            data=v_data, x='Type', y='Value', hue='Type',
-            palette={'True Ground Truth': paper_colors[i], 'Model Prediction': '#ffa600'},
-            inner='box', ax=ax, legend=False, cut=0
-        )
-        ax.set_title(f'Distribution Comparison: {name}', fontweight='bold')
-        ax.set_xlabel('')
-        ax.set_ylabel(f'{name} Value', fontweight='bold')
-        ax.grid(True, linestyle=':', alpha=0.6)
-    plt.tight_layout()
-    violin_true_pred_path = os.path.join(output_dir, 'violin_wld_true_vs_pred.png')
-    _atomic_save_fig(plt, violin_true_pred_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    # 8. VIOLIN PLOT: Signed errors
-    fig, ax = plt.subplots(figsize=(10, 6))
-    err_w = y_pred_wld_denorm[:, 0] - y_test_denorm[:, 0]
-    err_l = y_pred_wld_denorm[:, 1] - y_test_denorm[:, 1]
-    err_d = y_pred_wld_denorm[:, 2] - y_test_denorm[:, 2]
-    err_df = pd.DataFrame({
-        'Error': np.concatenate([err_w, err_l, err_d]),
-        'Parameter': ['Width (W)'] * len(err_w) + ['Length (L)'] * len(err_l) + ['Depth (D)'] * len(err_d)
-    })
-    sns.violinplot(
-        data=err_df, x='Parameter', y='Error', hue='Parameter',
-        palette={'Width (W)': paper_colors[0], 'Length (L)': paper_colors[1], 'Depth (D)': paper_colors[2]},
-        inner='quartile', ax=ax, legend=False, cut=0
-    )
-    ax.axhline(0, color='#d62728', linestyle='--', linewidth=2, label='Zero Error Line')
-    ax.set_title('Test Set Prediction Signed Error Distributions ($Pred - True$)', fontweight='bold')
-    ax.set_xlabel('Target Parameter', fontweight='bold')
-    ax.set_ylabel('Signed Error', fontweight='bold')
-    ax.grid(True, linestyle=':', alpha=0.6)
-    plt.tight_layout()
-    violin_signed_err_path = os.path.join(output_dir, 'violin_wld_signed_errors.png')
-    _atomic_save_fig(plt, violin_signed_err_path, dpi=300, bbox_inches='tight')
-    plt.close()
-
-    # 9. VIOLIN PLOT BY SHAPE
-    if y_shape_test is not None and unique_shapes is not None:
-        fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
-        shape_names_test = [unique_shapes[int(s)] for s in y_shape_test]
-        for i, (ax, name) in enumerate(zip(axes, metrics_names)):
-            shape_err_df = pd.DataFrame({
-                'Signed Error': y_pred_wld_denorm[:, i] - y_test_denorm[:, i],
-                'Crack Shape': shape_names_test
-            })
-            sns.violinplot(
-                data=shape_err_df, x='Crack Shape', y='Signed Error', hue='Crack Shape',
-                palette='Set2', inner='quartile', ax=ax, legend=False, cut=0
-            )
-            ax.axhline(0, color='#d62728', linestyle='--', linewidth=1.8)
-            ax.set_title(f'Error Distribution by Shape: {name}', fontweight='bold')
-            ax.set_xlabel('Crack Shape', fontweight='bold')
-            ax.set_ylabel(f'Error ({name})', fontweight='bold')
-            plt.setp(ax.get_xticklabels(), rotation=20, ha='right')
-            ax.grid(True, linestyle=':', alpha=0.6)
-        plt.tight_layout()
-        violin_by_shape_path = os.path.join(output_dir, 'violin_wld_by_shape.png')
-        _atomic_save_fig(plt, violin_by_shape_path, dpi=300, bbox_inches='tight')
-        plt.close()
-    else:
-        violin_by_shape_path = None
-    
-    print("\n[OK] All comprehensive metric visualizations & violin plots saved!")
-    return {
-        'regression_metrics': regression_metrics_path,
-        'classification_metrics': clf_metrics_path,
-        'predictions_scatter': scatter_path,
-        'residuals': residual_path,
-        'error_distributions': error_dist_path,
-        'error_heatmaps': heatmap_path,
-        'violin_true_vs_pred': violin_true_pred_path,
-        'violin_signed_errors': violin_signed_err_path,
-        'violin_by_shape': violin_by_shape_path
-    }
+# ============================================================================
+# IEEE PUBLICATION PLOTTING SUITE (IMPORTED FROM figures_ieee)
+# ============================================================================
+from figures_ieee import (
+    setup_ieee_style as _set_ieee_style,
+    plot_fig1_training_curves,
+    plot_fig2_confusion_matrix,
+    plot_fig3_regression_scatter,
+    plot_fig4_tsne_latent_space,
+    plot_per_shape_comparison,
+    plot_per_class_accuracy,
+    generate_comprehensive_metrics_visualizations,
+)
 
 
 def compute_regression_losses(y_pred_wld, y_wld, criterion_reg):
@@ -1146,10 +479,12 @@ class ImprovedMultimodelNet(nn.Module):
     """
     Multimodel network for shape classification and joint W/L/D regression
     with Kendall et al. (2018) Homoscedastic Uncertainty Weighting.
+    Regression head uses Sigmoid to bound output to (0, 1) matching normalized targets.
     """
-    def __init__(self, num_shapes):
+    def __init__(self, num_shapes, latent_dim=128):
         super(ImprovedMultimodelNet, self).__init__()
         self.num_shapes = num_shapes
+        self.latent_dim = latent_dim
         
         # Learnable uncertainty parameters
         self.log_var_clf = nn.Parameter(torch.tensor(0.0))
@@ -1157,76 +492,62 @@ class ImprovedMultimodelNet(nn.Module):
         self.log_var_l = nn.Parameter(torch.tensor(0.0))
         self.log_var_d = nn.Parameter(torch.tensor(0.0))
         
-        # ===== SHARED BACKBONE =====
+        # ===== COMPACT SHARED BACKBONE =====
+        # Input: (B, 2, 32, 32) -> Compressed Latent Feature: (B, 128)
         self.backbone = nn.Sequential(
+            # Block 1 (32x32 -> 16x16)
             nn.Conv2d(2, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.SiLU(),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.SiLU(),
             nn.MaxPool2d(2, 2),
-            nn.Dropout(0.1),
-            
+            nn.Dropout(0.05),
+
+            # Block 2 (16x16 -> 8x8)
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.SiLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.SiLU(),
             nn.MaxPool2d(2, 2),
-            nn.Dropout(0.1),
-            
+            nn.Dropout(0.05),
+
+            # Block 3 (8x8 -> 1x1 Global Average Pool)
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.SiLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.SiLU(),
-            nn.AdaptiveAvgPool2d(4),
-            nn.Dropout(0.1)
+            nn.AdaptiveAvgPool2d((1, 1))
         )
         
-        # ===== CLASSIFICATION HEAD =====
+        # ===== SIMPLE CLASSIFICATION HEAD =====
         self.classifier = nn.Sequential(
-            nn.Linear(128 * 4 * 4, 256),
-            nn.BatchNorm1d(256),
-            nn.SiLU(),
-            nn.Dropout(0.1),
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.SiLU(),
-            nn.Dropout(0.1),
-            nn.Linear(128, num_shapes)
-        )
-        
-        # ===== REGRESSION BACKBONE =====
-        self.regressor_backbone = nn.Sequential(
-            nn.Linear(128 * 4 * 4, 512),
-            nn.BatchNorm1d(512),
-            nn.SiLU(),
-            nn.Dropout(0.1),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.SiLU(),
-            nn.Dropout(0.1)
-        )
-        
-        # ===== JOINT REGRESSION HEAD (W, L, D) =====
-        self.reg_head = nn.Sequential(
-            nn.Linear(256, 64),
+            nn.Linear(latent_dim, 64),
             nn.BatchNorm1d(64),
             nn.SiLU(),
-            nn.Dropout(0.05),
-            nn.Linear(64, 3)
+            nn.Dropout(0.1),
+            nn.Linear(64, num_shapes)
+        )
+        
+        # ===== SIMPLE REGRESSION BACKBONE & HEAD (W, L, D) =====
+        # Sigmoid at the end bounds output to (0, 1) matching normalized targets
+        self.regressor_backbone = nn.Sequential(
+            nn.Linear(latent_dim, 64),
+            nn.BatchNorm1d(64),
+            nn.SiLU(),
+            nn.Dropout(0.1)
+        )
+        
+        self.reg_head = nn.Sequential(
+            nn.Linear(64, 3),
+            nn.Sigmoid()
         )
     
     def forward(self, x):
         """Forward pass"""
         backbone_feat = self.backbone(x)
-        backbone_feat = backbone_feat.reshape(backbone_feat.size(0), -1)
+        backbone_feat = backbone_feat.view(backbone_feat.size(0), -1)
         
+        # Classification branch (simple head) - raw logits
         shape_logits = self.classifier(backbone_feat)
+        
+        # Regression branch (simple head) - Sigmoid bounded to (0, 1)
         reg_feat = self.regressor_backbone(backbone_feat)
         y_pred_wld = self.reg_head(reg_feat)
         
@@ -2151,70 +1472,15 @@ for run_name in [RUN_NAME]:
                 per_shape_csv = os.path.join(combo_folder, 'test_metrics_per_shape.csv')
                 _atomic_write_df(per_shape_df, per_shape_csv, index=False)
                 
-                # Visualize per-shape metrics comparison (Q1 Standard)
+                # Visualize per-shape & per-class metrics comparison (IEEE Standard - No internal title)
                 try:
-                    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-                    fig.suptitle(f'Per-Shape Metrics Comparison (Q1 Standard - Train {TRAIN_PERCENT}%)', fontsize=14, fontweight='bold')
-                    
-                    shapes = [r['shape'] for r in per_shape_results]
-                    
-                    # Classification accuracy per shape
-                    ax = axes[0, 0]
-                    accs = [r['clf_acc'] * 100.0 for r in per_shape_results]
-                    ax.bar(shapes, accs, color='skyblue', alpha=0.7)
-                    ax.set_ylabel('Accuracy (%)', fontweight='bold')
-                    ax.set_title('Classification Accuracy per Shape')
-                    ax.set_ylim([0, 105])
-                    ax.grid(axis='y', alpha=0.3)
-                    for i, v in enumerate(accs):
-                        ax.text(i, v + 1.0, f'{v:.1f}%', ha='center', fontsize=9)
-                    
-                    # MAE per shape (avg)
-                    ax = axes[0, 1]
-                    maes = [(r['mae_w'] + r['mae_l'] + r['mae_d']) / 3.0 for r in per_shape_results]
-                    ax.bar(shapes, maes, color='lightcoral', alpha=0.7)
-                    ax.set_ylabel('MAE Avg (mm)', fontweight='bold')
-                    ax.set_title('Mean Absolute Error per Shape')
-                    ax.grid(axis='y', alpha=0.3)
-                    for i, v in enumerate(maes):
-                        ax.text(i, v * 1.02, f'{v:.4f}', ha='center', fontsize=9)
-                    
-                    # RMSE per shape (avg)
-                    ax = axes[1, 0]
-                    rmses = [(r['rmse_w'] + r['rmse_l'] + r['rmse_d']) / 3.0 for r in per_shape_results]
-                    ax.bar(shapes, rmses, color='lightgreen', alpha=0.7)
-                    ax.set_ylabel('RMSE Avg (mm)', fontweight='bold')
-                    ax.set_title('Root Mean Squared Error per Shape')
-                    ax.grid(axis='y', alpha=0.3)
-                    for i, v in enumerate(rmses):
-                        ax.text(i, v * 1.02, f'{v:.4f}', ha='center', fontsize=9)
-                    
-                    # NRMSE per shape (avg)
-                    ax = axes[1, 1]
-                    nrmses = [r['nrmse_avg'] for r in per_shape_results]
-                    ax.bar(shapes, nrmses, color='plum', alpha=0.7)
-                    ax.set_ylabel('NRMSE Avg (%)', fontweight='bold')
-                    ax.set_title('Normalized RMSE per Shape')
-                    ax.grid(axis='y', alpha=0.3)
-                    for i, v in enumerate(nrmses):
-                        ax.text(i, v * 1.02, f'{v:.2f}%', ha='center', fontsize=9)
-                    
-                    plt.tight_layout()
-                    per_shape_plot = os.path.join(combo_folder, 'test_metrics_per_shape.png')
-                    _atomic_save_fig(plt, per_shape_plot, dpi=150, bbox_inches='tight')
-                    plt.close()
-                    # Per-class accuracy plot (recall per class)
-                    try:
-                        class_labels = shapes
-                        per_class_plot = os.path.join(combo_folder, 'per_class_accuracy.png')
-                        _save_per_class_accuracy_plot(y_shape_test, grid_pred_shape, class_labels, per_class_plot, title=f'Per-class Accuracy (Train {TRAIN_PERCENT}%)')
-                        # also save overall copy
-                        _save_per_class_accuracy_plot(y_shape_test, grid_pred_shape, class_labels, os.path.join(OUTPUT_DIR, 'per_class_accuracy.png'), title=f'Per-class Accuracy (Train {TRAIN_PERCENT}%)')
-                        print(f"[OK] Per-class accuracy saved: {per_class_plot}")
-                    except Exception as e:
-                        print(f"[WARNING] Failed to save per-class accuracy plot: {e}")
+                    plot_per_shape_comparison(per_shape_results, combo_folder, filename_prefix="test_metrics_per_shape")
+                    plot_per_class_accuracy(y_shape_test, grid_pred_shape, unique_shapes, combo_folder, filename_prefix="per_class_accuracy")
+                    plot_per_class_accuracy(y_shape_test, grid_pred_shape, unique_shapes, OUTPUT_DIR, filename_prefix="per_class_accuracy")
+                    print(f"[OK] IEEE Per-shape and per-class plots saved in: {combo_folder}")
                 except Exception as e:
-                    print(f"[WARNING] Failed to generate per-shape plots: {e}")
+                    print(f"[WARNING] Failed to generate IEEE per-shape plots: {e}")
+
             
             grid_results.append({
                 'clf_acc': grid_clf_acc,
