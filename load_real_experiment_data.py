@@ -376,7 +376,9 @@ def evaluate_real_experiment(model, x_scaler=None, y_scaler=None, unique_shapes=
     if exp_base is None:
         raise FileNotFoundError("Không tìm thấy thư mục Experiment_1 trong các đường dẫn khả dụng.")
 
-    dir_5k = os.path.join(exp_base, "5khz") if os.path.isdir(os.path.join(exp_base, "5khz")) else os.path.join(exp_base, "Trainning")
+    dir_5k = os.path.join(exp_base, "5khz") if os.path.isdir(os.path.join(exp_base, "5khz")) else (
+        os.path.join(exp_base, "Training") if os.path.isdir(os.path.join(exp_base, "Training")) else os.path.join(exp_base, "Trainning")
+    )
     dir_10k = os.path.join(exp_base, "10khz") if os.path.isdir(os.path.join(exp_base, "10khz")) else os.path.join(exp_base, "Testing")
     dir_20k = os.path.join(exp_base, "20khz") if os.path.isdir(os.path.join(exp_base, "20khz")) else os.path.join(exp_base, "Testing")
     

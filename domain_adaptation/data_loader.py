@@ -66,11 +66,15 @@ def get_experiment_1_5khz_dir() -> str:
     if os.path.isdir(cand_5k):
         return cand_5k
 
+    cand_training = os.path.join(exp_base, "Training")
+    if os.path.isdir(cand_training):
+        return cand_training
+
     cand_train = os.path.join(exp_base, "Trainning")
     if os.path.isdir(cand_train):
         return cand_train
 
-    raise FileNotFoundError(f"Không tìm thấy thư mục con '5khz' hoặc 'Trainning' bên trong: {exp_base}")
+    raise FileNotFoundError(f"Không tìm thấy thư mục con '5khz', 'Training' hoặc 'Trainning' bên trong: {exp_base}")
 
 
 class Real5kHzDataset(Dataset):

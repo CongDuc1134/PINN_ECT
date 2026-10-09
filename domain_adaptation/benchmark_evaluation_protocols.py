@@ -212,7 +212,7 @@ def finetune_single_model(
     y_wld_val: Optional[torch.Tensor] = None,
     epochs: int = 500,
     lr: float = 5e-3,
-    freeze_backbone: bool = True,
+    freeze_backbone: bool = False,
     patience: int = 100,
     device: str = "cpu",
     variant: str = "pinn",
@@ -244,7 +244,7 @@ def finetune_single_model(
             if hasattr(model, attr) and isinstance(getattr(model, attr), nn.Parameter):
                 getattr(model, attr).data.fill_(0.0)
 
-    # Đóng băng Backbone nếu được yêu cầu, cập nhật triệt để các Heads (Headers)
+    # Đóng băng Backbone nếu được yêu cầu, hoặc finetune toàn bộ mô hình
     if freeze_backbone and hasattr(model, "backbone"):
         for p in model.backbone.parameters():
             p.requires_grad = False
@@ -261,6 +261,10 @@ def finetune_single_model(
         for attr in ["log_var_clf", "log_var_w", "log_var_l", "log_var_d", "log_var_reg"]:
             if hasattr(model, attr) and isinstance(getattr(model, attr), nn.Parameter):
                 getattr(model, attr).requires_grad = True
+    else:
+        # Không đóng băng: Cho phép cập nhật toàn bộ tham số mô hình (Backbone + Heads)
+        for p in model.parameters():
+            p.requires_grad = True
 
     trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.Adam(trainable, lr=lr)
@@ -524,7 +528,7 @@ def run_protocol_1_scan_split(
     models_to_test: List[Dict[str, str]],
     epochs: int = 500,
     lr: float = 5e-3,
-    freeze_backbone: bool = True,
+    freeze_backbone: bool = False,
     patience: int = 100,
     device: str = "cpu",
     output_dir: str = "domain_adaptation/finetune_results/protocols",
@@ -657,6 +661,20 @@ def run_protocol_1_scan_split(
         pred_detail_csv = os.path.join(tables_dir, f"predictions_protocol1_{key.lower()}.csv")
         df_pred_details.to_csv(pred_detail_csv, index=False)
 
+        # 3b. Lưu bảng lịch sử loss từng epoch vào tables/
+        n_eps = len(hist.get("train_loss", []))
+        df_loss_history = pd.DataFrame({
+            "epoch": hist.get("epoch", list(range(1, n_eps + 1))),
+            "train_loss": hist.get("train_loss", []),
+            "val_loss": hist.get("val_loss", []),
+            "train_loss_clf": hist.get("train_loss_clf", []),
+            "val_loss_clf": hist.get("val_loss_clf", []),
+            "train_loss_reg": hist.get("train_loss_reg", []),
+            "val_loss_reg": hist.get("val_loss_reg", []),
+        })
+        loss_history_csv = os.path.join(tables_dir, f"loss_history_protocol1_{key.lower()}.csv")
+        df_loss_history.to_csv(loss_history_csv, index=False)
+
         # 4. Vẽ riêng đường Loss khi Finetune cho mô hình này vào figures_dir
         loss_fig_path = os.path.join(figures_dir, f"fig_protocol1_separate_loss_{key}")
         plot_separate_loss_curve_single_model(
@@ -750,7 +768,7 @@ def run_protocol_2_kfold_defect_split(
     models_to_test: List[Dict[str, str]],
     epochs: int = 500,
     lr: float = 5e-3,
-    freeze_backbone: bool = True,
+    freeze_backbone: bool = False,
     patience: int = 100,
     device: str = "cpu",
     output_dir: str = "domain_adaptation/finetune_results/protocols",
@@ -1167,8 +1185,8 @@ def main():
     parser = argparse.ArgumentParser(description="Chương trình Đánh giá Độc lập 2 Giao thức Thích ứng miền ECT 5kHz")
     parser.add_argument("--protocol", type=str, choices=["1", "2", "all"], default="all",
                         help="Giao thức cần chạy: '1' (Scan Split), '2' (10-Fold LODO), hoặc 'all' (mặc định: 'all')")
-    parser.add_argument("--models", "--model", type=str, default="cnn_proposed",
-                        help="Mô hình cần chạy: 'cnn_proposed', 'cnn_nopinn', 'mlp', 'xiong', hoặc 'all' (mặc định: 'cnn_proposed')")
+    parser.add_argument("--models", "--model", type=str, default="cnn_proposed,cnn_nopinn",
+                        help="Mô hình cần chạy: 'cnn_proposed', 'cnn_nopinn', 'mlp', 'xiong', hoặc 'all' (mặc định: 'cnn_proposed,cnn_nopinn')")
     parser.add_argument("--epochs", type=int, default=500, help="Số epochs finetuning (mặc định: 500)")
     parser.add_argument("--lr", type=float, default=5e-3, help="Tốc độ học cố định (Fixed LR) khi finetuning (mặc định: 5e-3)")
     parser.add_argument("--fixed_lr", dest="fixed_lr", action="store_true", default=True,
@@ -1188,10 +1206,10 @@ def main():
                         help="Khôi phục mô hình tại best val epoch thay vì epoch cuối (mặc định: True - lấy kết quả tốt nhất)")
     parser.add_argument("--save_final", dest="save_final", action="store_true",
                         help="Lưu và đánh giá kết quả tại epoch cuối cùng thay vì checkpoint tốt nhất")
-    parser.add_argument("--freeze_backbone", dest="freeze_backbone", action="store_true", default=True,
-                        help="Đóng băng Backbone khi finetuning (mặc định: True)")
-    parser.add_argument("--no_freeze_backbone", dest="freeze_backbone", action="store_false",
-                        help="Không đóng băng Backbone, finetune toàn bộ mô hình (mặc định: False)")
+    parser.add_argument("--freeze_backbone", dest="freeze_backbone", action="store_true",
+                        help="Đóng băng Backbone khi finetuning")
+    parser.add_argument("--no_freeze_backbone", dest="freeze_backbone", action="store_false", default=False,
+                        help="Không đóng băng Backbone, finetune toàn bộ mô hình (mặc định: True - finetune toàn bộ)")
     parser.add_argument("--reset_kendall", dest="reset_kendall", action="store_true", default=True,
                         help="Reset tham số Kendall uncertainty về 0.0 (exp(-s) = 1.0) khi finetuning (mặc định: True)")
     parser.add_argument("--no_reset_kendall", dest="reset_kendall", action="store_false",
