@@ -184,8 +184,14 @@ if BATCH_SIZE < 1:
 EPOCHS = int(os.environ.get("EPOCHS", "300"))
 RANDOM_STATE = int(os.environ.get("RANDOM_STATE", os.environ.get("SEED", "42")))
 LEARNING_RATE = 0.001
-# Total loss target:
-#   L = L_clf + ((L_w + L_l + L_d)/3) + alpha * L_pinn
+# Total loss formula:
+#   data_loss = (
+#       precision_clf * norm_clf_loss + 0.5 * model.log_var_clf +
+#       precision_w   * norm_w_loss   + 0.5 * model.log_var_w +
+#       precision_l   * norm_l_loss   + 0.5 * model.log_var_l +
+#       precision_d   * norm_d_loss   + 0.5 * model.log_var_d
+#   )
+#   total_loss = data_loss + alpha * norm_batch_physics_loss
 # Recommended default alpha from recent sweep analysis.
 ALPHA_INIT = float(os.environ.get("ALPHA_INIT", "0.02"))
 if ALPHA_INIT <= 0:
@@ -210,9 +216,7 @@ CHECKPOINT_PHYSICS_NUM_SAMPLES = 1
 
 # PINN update policy:
 # - Warm-up phase (before PINN activation): data-loss optimizer step every batch.
-# - PINN phase (after activation):
-#   1) data-loss optimizer step every batch
-#   2) one extra optimizer step at end of epoch from mean PINN loss.
+# - PINN phase (after activation): unified single step per batch (data_loss + alpha * norm_batch_physics_loss).
 
 # Train data percentage relative to the FULL dataset size.
 # Use env var TRAIN_PERCENT=1..10 for your requested runs.
@@ -432,8 +436,10 @@ print(f"[CONFIG] Run tag: {RUN_TAG}")
 print(f"[CONFIG] Evaluation isolation mode: ON (no cross-percent resume)")
 print(f"[CONFIG] Epoch verbose log: {'ON' if EPOCH_VERBOSE_LOG else 'OFF'}")
 print(f"[CONFIG] PINN loss type: {PINN_LOSS_TYPE.upper()}")
-print("[CONFIG] PINN update schedule: data per-batch + mean PINN step at end of epoch")
-print(f"[CONFIG] Loss mode: L = L_clf + ((L_w + L_l + L_d)/3) + alpha*L_pinn")
+print("[CONFIG] PINN update schedule: unified single step per batch (data + PINN combined)")
+print("[CONFIG] Loss mode: Kendall uncertainty (clf, w, l, d) + alpha * L_pinn")
+print("[CONFIG] Data loss formula: data_loss = precision_clf*norm_clf_loss + 0.5*log_var_clf + precision_w*norm_w_loss + 0.5*log_var_w + precision_l*norm_l_loss + 0.5*log_var_l + precision_d*norm_d_loss + 0.5*log_var_d")
+print(f"[CONFIG] Total loss formula: total_loss = data_loss + alpha * norm_batch_physics_loss")
 print("[CONFIG] PINN physics formula: log(1 + sum((B_true - B_pred)^2) / sum(B_true^2))")
 print(f"[CONFIG] Weight init: alpha={ALPHA_INIT:.6f}")
 print(f"[CONFIG] PINN activation epoch: {PINN_ACTIVATION_EPOCH}")
@@ -837,7 +843,6 @@ class ImprovedMultimodelNet(nn.Module):
         # ===== SIMPLE CLASSIFICATION HEAD =====
         self.classifier = nn.Sequential(
             nn.Linear(latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1),
             nn.Linear(64, num_shapes)
@@ -847,7 +852,6 @@ class ImprovedMultimodelNet(nn.Module):
         # Sigmoid at the end bounds output to (0, 1) matching normalized targets
         self.regressor_backbone = nn.Sequential(
             nn.Linear(latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1)
         )
@@ -1343,11 +1347,12 @@ print(f"  Classification loss: CrossEntropyLoss")
 print(f"  Regression losses: MSE (W, L, D)")
 print(f"  Physics loss: Custom PINN constraint")
 print(f"  Weighting method: fixed warm-up then PINN activation")
-print(f"    └─ Loss formula (active): L = L_clf + ((L_w + L_l + L_d)/3) + alpha*L_pinn")
+print(f"    └─ Data loss formula (Kendall uncertainty): precision_clf*norm_clf + precision_w*norm_w + precision_l*norm_l + precision_d*norm_d")
+print(f"    └─ Total loss formula: total_loss = data_loss + alpha * norm_batch_physics_loss")
 print(f"    └─ Warm-up (epochs 1-{PINN_ACTIVATION_EPOCH}): PINN inactive")
 print(f"    └─ PINN phase (epoch {PINN_ACTIVATION_EPOCH + 1}+): PINN active when physics modules are available")
 print(f"    └─ alpha init: {ALPHA_INIT:.6f}")
-print("    └─ Optimizer update: data per-batch; PINN mean-loss step once per epoch")
+print("    └─ Optimizer update: unified single step per batch (data + PINN combined)")
 
 # ============================================================================
 # 8. LOAD PHYSICS MODULES
@@ -1382,7 +1387,7 @@ except ImportError as e:
 
 print(f'\nTRAINING WITH PINN WARM-UP')
 print(f'  Warm-up (epochs 1-{PINN_ACTIVATION_EPOCH}): classification + regression (PINN inactive)')
-print(f'  PINN phase (epoch {PINN_ACTIVATION_EPOCH + 1}+): data-loss per batch + one mean PINN update at end of epoch')
+print(f'  PINN phase (epoch {PINN_ACTIVATION_EPOCH + 1}+): unified single step per batch (data + PINN combined)')
 print(f'  Early stopping: after PINN activation, stop when PINN loss plateaus (patience=300)\n')
 
 # Initialize training state
@@ -2173,7 +2178,7 @@ except Exception as e:
 plot_fig1_training_curves(history, OUTPUT_DIR, pinn_activated_epoch)
 plot_fig2_confusion_matrix(y_shape_test, y_pred_shape, unique_shapes, OUTPUT_DIR)
 plot_fig3_regression_scatter(y_test_denorm, y_pred_wld_denorm, OUTPUT_DIR)
-plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, OUTPUT_DIR, f"Train {TRAIN_PERCENT}%")
+plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, OUTPUT_DIR, f"Train {TRAIN_PERCENT}%", device=device)
 
 # ============================================================================
 # PER-SHAPE ANALYSIS (Chi tiết cho từng loại vết nứt)
@@ -2478,7 +2483,7 @@ summary.append("   Raw vs Predicted field data normalized and denormalized\n")
 summary.append("   Better visualization of field differences\n\n")
     
 summary.append("3. Loss Weighting Strategy:\n")
-summary.append("   Loss formula: L = L_clf + ((L_w + L_l + L_d)/3) + alpha*L_pinn\n")
+summary.append("   Loss formula: Kendall Uncertainty Data Loss + alpha*norm_batch_physics_loss\n")
 summary.append(f"   Alpha init: alpha={ALPHA_INIT:.6f}\n")
 summary.append("   Before PINN activation: physics term = 0\n")
 summary.append("   After PINN activation: physics term weighted by alpha\n\n")
@@ -2540,8 +2545,8 @@ print(f"\n" + "="*80)
 print(f"[PINN LOSS WEIGHT SUMMARY]")
 print(f"="*80)
 print(f"  Alpha init (PINN term weight): {ALPHA_INIT:.6f}")
-print(f"  Warm-up (epochs 1-100): PINN inactive")
-print(f"  PINN phase (epoch 101+): PINN active")
+print(f"  Warm-up (epochs 1-{PINN_ACTIVATION_EPOCH}): PINN inactive")
+print(f"  PINN phase (epoch {PINN_ACTIVATION_EPOCH + 1}+): PINN active")
 print(f"\nFormula used:")
-print(f"  L = L_clf + ((L_w + L_l + L_d)/3) + alpha*L_pinn")
+print(f"  total_loss = data_loss (Kendall uncertainty) + alpha * norm_batch_physics_loss")
 print(f"="*80)

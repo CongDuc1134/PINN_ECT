@@ -102,7 +102,7 @@ goto :AFTER_RUN
 :RUN_CNN
 echo.
 echo [START] Dang khoi chay Benchmark cho CNN...
-"!PYTHON_EXE!" domain_adaptation/benchmark_evaluation_protocols.py --protocol all --models cnn_proposed cnn_nopinn %2 %3 %4
+"!PYTHON_EXE!" domain_adaptation/benchmark_evaluation_protocols.py --protocol all --models cnn_proposed,cnn_nopinn %2 %3 %4
 goto :AFTER_RUN
 
 :RUN_TEST

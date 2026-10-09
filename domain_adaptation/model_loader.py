@@ -183,6 +183,62 @@ def extract_pinn_alpha_from_checkpoint(checkpoint_dir: str, variant: str = "pinn
     return 1.0
 
 
+def adapt_state_dict_for_no_bn(state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    """
+    Tự động chuyển đổi state_dict từ checkpoint cũ (có BatchNorm1d ở Header)
+    sang kiến trúc mới chuẩn (Header thuần Linear, không BatchNorm1d) bằng
+    kỹ thuật Batch Normalization Folding chính xác tuyệt đối về mặt toán học.
+    """
+    new_sd = {k: v.clone() for k, v in state_dict.items()}
+
+    # 1. Gập BatchNorm1d ở Classifier Head
+    if "classifier.1.running_mean" in new_sd and "classifier.4.weight" in new_sd:
+        w_lin = new_sd["classifier.0.weight"]
+        b_lin = new_sd["classifier.0.bias"]
+        gamma = new_sd["classifier.1.weight"]
+        beta = new_sd["classifier.1.bias"]
+        mean = new_sd["classifier.1.running_mean"]
+        var = new_sd["classifier.1.running_var"]
+        eps = 1e-5
+
+        scale = gamma / torch.sqrt(var + eps)
+        new_sd["classifier.0.weight"] = w_lin * scale.unsqueeze(1)
+        new_sd["classifier.0.bias"] = beta + (b_lin - mean) * scale
+        new_sd["classifier.3.weight"] = new_sd["classifier.4.weight"]
+        new_sd["classifier.3.bias"] = new_sd["classifier.4.bias"]
+
+        for k in [
+            "classifier.1.weight", "classifier.1.bias",
+            "classifier.1.running_mean", "classifier.1.running_var",
+            "classifier.1.num_batches_tracked",
+            "classifier.4.weight", "classifier.4.bias",
+        ]:
+            new_sd.pop(k, None)
+
+    # 2. Gập BatchNorm1d ở Regressor Backbone
+    if "regressor_backbone.1.running_mean" in new_sd and "regressor_backbone.0.weight" in new_sd:
+        w_lin = new_sd["regressor_backbone.0.weight"]
+        b_lin = new_sd["regressor_backbone.0.bias"]
+        gamma = new_sd["regressor_backbone.1.weight"]
+        beta = new_sd["regressor_backbone.1.bias"]
+        mean = new_sd["regressor_backbone.1.running_mean"]
+        var = new_sd["regressor_backbone.1.running_var"]
+        eps = 1e-5
+
+        scale = gamma / torch.sqrt(var + eps)
+        new_sd["regressor_backbone.0.weight"] = w_lin * scale.unsqueeze(1)
+        new_sd["regressor_backbone.0.bias"] = beta + (b_lin - mean) * scale
+
+        for k in [
+            "regressor_backbone.1.weight", "regressor_backbone.1.bias",
+            "regressor_backbone.1.running_mean", "regressor_backbone.1.running_var",
+            "regressor_backbone.1.num_batches_tracked",
+        ]:
+            new_sd.pop(k, None)
+
+    return new_sd
+
+
 def load_pretrained_model(
     model_type: str = "cnn",
     checkpoint_dir: Optional[str] = None,
@@ -219,12 +275,10 @@ def load_pretrained_model(
     # Nạp weights
     ckpt = torch.load(model_weight_path, map_location=device, weights_only=False)
     if isinstance(ckpt, dict):
-        if "model_state_dict" in ckpt:
-            model.load_state_dict(ckpt["model_state_dict"])
-        elif "state_dict" in ckpt:
-            model.load_state_dict(ckpt["state_dict"])
-        else:
-            model.load_state_dict(ckpt)
+        sd = ckpt.get("model_state_dict", ckpt.get("state_dict", ckpt))
+        if m_type == "cnn":
+            sd = adapt_state_dict_for_no_bn(sd)
+        model.load_state_dict(sd)
     elif isinstance(ckpt, nn.Module):
         model = ckpt.to(device)
     model.eval()
@@ -297,9 +351,10 @@ def load_5khz_fully_prepared(
 
 def predict_and_denormalize(
     model: nn.Module,
-    X_tensor: torch.Tensor,
+    X_tensor: Optional[torch.Tensor] = None,
     y_scaler: Optional[Any] = None,
     unique_shapes: Optional[List[str]] = None,
+    X_normalized: Optional[torch.Tensor] = None,
 ) -> Tuple[List[str], np.ndarray, torch.Tensor, torch.Tensor]:
     """
     Thực hiện suy luận từ tensor đầu vào X và giải chuẩn hóa:
@@ -308,6 +363,12 @@ def predict_and_denormalize(
     - shape_logits gốc
     - pred_wld_norm gốc
     """
+    if X_tensor is None:
+        if X_normalized is not None:
+            X_tensor = X_normalized
+        else:
+            raise ValueError("Cần cung cấp tensor đầu vào 'X_tensor' hoặc 'X_normalized'.")
+
     if unique_shapes is None:
         unique_shapes = DEFAULT_UNIQUE_SHAPES
 
@@ -338,3 +399,107 @@ def predict_and_denormalize(
         pred_wld_denorm = denormalize_regression_predictions(pred_wld_norm, y_scaler)
 
     return pred_shapes, pred_wld_denorm, shape_logits, pred_wld_norm
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY ALIASES & HELPERS
+# =============================================================================
+def load_real_data_fully_normalized(
+    model_type: str = "cnn",
+    split: str = "5khz",
+    checkpoint_dir: Optional[str] = None,
+    train_pct: str = "10pct",
+    variant: str = "pinn",
+    scale_factor: float = 1.0,
+    device: str = "cpu",
+) -> Dict[str, Any]:
+    """
+    Nạp toàn diện:
+    1. Mô hình với weights tiền huấn luyện
+    2. Cả 2 bộ scaler (X_scaler, y_scaler)
+    3. Mẫu thực nghiệm (5kHz/10kHz/20kHz) đã chuẩn hóa đầu vào X và nhãn kích thước W, L, D.
+    """
+    is_1d = (model_type.lower() in ["mlp", "xiong"])
+
+    # 1. Nạp mô hình và scalers
+    model, x_scaler, y_scaler, ckpt_dir = load_pretrained_model(
+        model_type=model_type,
+        checkpoint_dir=checkpoint_dir,
+        train_pct=train_pct,
+        variant=variant,
+        device=device,
+    )
+
+    # 2. Nạp dữ liệu thực nghiệm đã chuẩn hóa theo scalers
+    from domain_adaptation.data_loader import load_real_data_for_model
+    X_tensor, y_clf, y_wld_raw, metadata = load_real_data_for_model(
+        model_type=model_type,
+        split=split,
+        x_scaler=x_scaler,
+        y_scaler=y_scaler,
+        scale_factor=scale_factor,
+        device=device,
+    )
+
+    # Chuẩn hóa nhãn kích thước W, L, D nếu có y_scaler
+    if y_scaler is not None:
+        raw_np = y_wld_raw.cpu().numpy()
+        if hasattr(y_scaler, "transform"):
+            norm_np = y_scaler.transform(raw_np)
+        elif isinstance(y_scaler, (list, tuple)) and len(y_scaler) == 3:
+            cols = []
+            for i, sc in enumerate(y_scaler):
+                col = raw_np[:, i:i+1]
+                cols.append(sc.transform(col) if hasattr(sc, "transform") else col)
+            norm_np = np.hstack(cols)
+        else:
+            norm_np = raw_np
+        y_wld_norm = torch.tensor(norm_np, dtype=torch.float32, device=device)
+    else:
+        y_wld_norm = y_wld_raw.clone()
+
+    alpha = extract_pinn_alpha_from_checkpoint(ckpt_dir, variant=variant)
+
+    return {
+        "model": model,
+        "X_tensor": X_tensor,
+        "X_norm": X_tensor,
+        "y_clf": y_clf,
+        "y_wld_norm": y_wld_norm,
+        "y_wld_raw": y_wld_raw,
+        "metadata": metadata,
+        "x_scaler": x_scaler,
+        "y_scaler": y_scaler,
+        "checkpoint_dir": ckpt_dir,
+        "is_1d": is_1d,
+        "model_type": model_type.lower(),
+        "variant": variant.lower(),
+        "alpha": alpha,
+    }
+
+
+
+def load_real_data_normalized(
+    model_type: str = "cnn",
+    split: str = "5khz",
+    x_scaler: Optional[Any] = None,
+    device: str = "cpu",
+    scale_factor: float = 1.0,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Dict[str, Any]], str]:
+    """
+    Nạp dữ liệu thực nghiệm chuẩn hóa đầu vào bằng x_scaler.
+    Trả về:
+        (X_norm, y_clf, y_wld_raw, metadata, data_dir)
+    """
+    from domain_adaptation.data_loader import load_real_data_for_model
+    X_norm, y_clf, y_wld_raw, metadata = load_real_data_for_model(
+        model_type=model_type,
+        split=split,
+        x_scaler=x_scaler,
+        scale_factor=scale_factor,
+        device=device,
+    )
+    from domain_adaptation.load_real_experiment_data import find_experiment_1_dir
+    data_dir = find_experiment_1_dir() or ""
+    return X_norm, y_clf, y_wld_raw, metadata, data_dir
+

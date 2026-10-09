@@ -55,7 +55,6 @@ class ImprovedMultimodelNet(nn.Module):
         # ===== SIMPLE CLASSIFICATION HEAD =====
         self.classifier = nn.Sequential(
             nn.Linear(self.latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1),
             nn.Linear(64, num_shapes)
@@ -65,7 +64,6 @@ class ImprovedMultimodelNet(nn.Module):
         # Sigmoid at the end bounds output to (0, 1) matching normalized targets
         self.regressor_backbone = nn.Sequential(
             nn.Linear(self.latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1)
         )
@@ -141,7 +139,6 @@ class CNN_SingleTask_Classification(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(self.latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1),
             nn.Linear(64, num_shapes)
@@ -193,7 +190,6 @@ class CNN_SingleTask_Regression(nn.Module):
 
         self.regressor_backbone = nn.Sequential(
             nn.Linear(self.latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1)
         )

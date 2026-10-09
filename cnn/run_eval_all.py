@@ -900,7 +900,6 @@ def _build_reeval_model_class(torch, nn):
             # ===== SIMPLE CLASSIFICATION HEAD =====
             self.classifier = nn.Sequential(
                 nn.Linear(latent_dim, 64),
-                nn.BatchNorm1d(64),
                 nn.SiLU(),
                 nn.Dropout(0.1),
                 nn.Linear(64, num_shapes),
@@ -910,7 +909,6 @@ def _build_reeval_model_class(torch, nn):
             # Sigmoid at the end bounds output to (0, 1) matching normalized targets
             self.regressor_backbone = nn.Sequential(
                 nn.Linear(latent_dim, 64),
-                nn.BatchNorm1d(64),
                 nn.SiLU(),
                 nn.Dropout(0.1),
             )

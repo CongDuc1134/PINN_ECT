@@ -25,7 +25,7 @@ def plot_fig4_tsne_latent_space(
     unique_shapes,
     output_dir,
     filename_prefix="fig4_tsne_latent_space",
-    device="cpu",
+    device=None,
     max_samples=1000,
 ):
     """
@@ -36,25 +36,51 @@ def plot_fig4_tsne_latent_space(
     setup_ieee_style()
     model.eval()
 
+    # Determine execution device: if not specified or None, automatically match model's device
+    if device is None:
+        try:
+            device = next(model.parameters()).device
+        except (StopIteration, AttributeError):
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(device)
+
+    # Ensure device strictly matches the model's parameter device
+    try:
+        model_device = next(model.parameters()).device
+        if model_device != device:
+            device = model_device
+    except (StopIteration, AttributeError):
+        pass
+
+    underlying_model = model.module if hasattr(model, 'module') else model
+
     latent_features = []
-    collected_shapes = []
-    collected_depths = []
     sample_count = 0
 
     with torch.no_grad():
         for batch_data in test_loader:
             batch_X = batch_data[0].to(device)
             # Extract features from backbone
-            if hasattr(model, 'backbone'):
-                feat = model.backbone(batch_X)
+            if hasattr(underlying_model, 'backbone'):
+                # Handle MLP backbone expecting flattened 1D features
+                if (
+                    len(underlying_model.backbone) > 0
+                    and isinstance(underlying_model.backbone[0], torch.nn.Linear)
+                    and batch_X.dim() > 2
+                ):
+                    feat = underlying_model.backbone(batch_X.reshape(batch_X.size(0), -1))
+                else:
+                    feat = underlying_model.backbone(batch_X)
                 feat = feat.reshape(feat.size(0), -1)
-            elif hasattr(model, 'feature_extractor'):
-                feat = model.feature_extractor(batch_X)
+            elif hasattr(underlying_model, 'feature_extractor'):
+                feat = underlying_model.feature_extractor(batch_X)
+                feat = feat.reshape(feat.size(0), -1)
             else:
                 # Fallback: flatten input if no explicit backbone
                 feat = batch_X.reshape(batch_X.size(0), -1)
 
-            latent_features.append(feat.cpu().numpy())
+            latent_features.append(feat.detach().cpu().numpy())
             sample_count += batch_X.size(0)
             if sample_count >= max_samples:
                 break
@@ -77,7 +103,7 @@ def plot_fig4_tsne_latent_space(
     ax_shape = axes[0]
     markers = ['o', 's', '^', 'D', 'v']
     for idx, shape_name in enumerate(unique_shapes):
-        mask = (shapes_all == idx)
+        mask = (shapes_all == idx) | (shapes_all == shape_name)
         if np.any(mask):
             color = SHAPE_COLORS[idx % len(SHAPE_COLORS)]
             marker = markers[idx % len(markers)]
@@ -106,8 +132,10 @@ def plot_fig4_tsne_latent_space(
     ax_depth.set_ylabel('t-SNE Dimension 2')
 
     plt.tight_layout()
+    os.makedirs(output_dir, exist_ok=True)
     save_path = os.path.join(output_dir, filename_prefix)
     save_ieee_figure(fig, save_path)
+    plt.close(fig)
 
 
 def plot_pca_latent_space(features, labels, class_names, output_prefix="pca"):
@@ -129,4 +157,5 @@ def plot_pca_latent_space(features, labels, class_names, output_prefix="pca"):
     ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.02), ncol=3, frameon=True, fontsize=8)
     plt.tight_layout()
     save_ieee_figure(fig, f"{output_prefix}_2d")
+    plt.close(fig)
 

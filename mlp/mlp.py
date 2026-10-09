@@ -2730,7 +2730,7 @@ except Exception as e:
 plot_fig1_training_curves(history, OUTPUT_DIR, pinn_activated_epoch)
 plot_fig2_confusion_matrix(y_shape_test, y_pred_shape, unique_shapes, OUTPUT_DIR)
 plot_fig3_regression_scatter(y_test_denorm, y_pred_wld_denorm, OUTPUT_DIR)
-plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, OUTPUT_DIR, f"MLP Train {TRAIN_PERCENT}%")
+plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, OUTPUT_DIR, f"MLP Train {TRAIN_PERCENT}%", device=device)
 
 # ============================================================================
 # PER-SHAPE ANALYSIS (Chi tiết cho từng loại vết nứt)

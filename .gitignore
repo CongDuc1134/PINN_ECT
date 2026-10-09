@@ -25,6 +25,7 @@ Outputs_*/
 *.ckpt
 *.npz
 checkpoint_temp/
+domain_adaptation/finetune_results/
 
 # ==============================================================================
 # 4. Logs & Temporary Files

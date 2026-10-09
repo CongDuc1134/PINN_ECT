@@ -519,7 +519,6 @@ class ImprovedMultimodelNet(nn.Module):
         # ===== SIMPLE CLASSIFICATION HEAD =====
         self.classifier = nn.Sequential(
             nn.Linear(latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1),
             nn.Linear(64, num_shapes)
@@ -529,7 +528,6 @@ class ImprovedMultimodelNet(nn.Module):
         # Sigmoid at the end bounds output to (0, 1) matching normalized targets
         self.regressor_backbone = nn.Sequential(
             nn.Linear(latent_dim, 64),
-            nn.BatchNorm1d(64),
             nn.SiLU(),
             nn.Dropout(0.1)
         )
@@ -1373,7 +1371,7 @@ for run_name in [RUN_NAME]:
             plot_fig1_training_curves(train_history, combo_folder)
             plot_fig2_confusion_matrix(y_shape_test, grid_pred_shape, unique_shapes, combo_folder)
             plot_fig3_regression_scatter(y_test_denorm, grid_pred_wld_denorm, combo_folder)
-            plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, combo_folder, f"No-PINN Train {TRAIN_PERCENT}%")
+            plot_fig4_tsne_latent_space(model, test_loader, y_shape_test, y_test_denorm, unique_shapes, combo_folder, f"No-PINN Train {TRAIN_PERCENT}%", device=device)
 
             # Generate comprehensive metric visualizations (Q1 Standard)
             test_metrics = {

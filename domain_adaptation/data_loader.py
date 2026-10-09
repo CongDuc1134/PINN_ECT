@@ -300,3 +300,85 @@ def get_5khz_10fold_defect_splits(bundle: Dict[str, Any]) -> List[Dict[str, Any]
         })
 
     return folds
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY & HELPER FUNCTIONS
+# =============================================================================
+RealExperimentDataset = Real5kHzDataset
+
+
+def load_real_data_for_model(
+    model_type: str = "cnn",
+    split: str = "5khz",
+    x_scaler: Optional[Any] = None,
+    y_scaler: Optional[Any] = None,
+    scale_factor: float = 1.0,
+    device: str = "cpu",
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Dict[str, Any]]]:
+    """
+    Nạp dữ liệu thực nghiệm theo tần số (5khz, 10khz, 20khz) và định dạng tensor phù hợp với model_type:
+    - 2D (B, 2, 32, 32) cho CNN.
+    - 1D (B, 2048) cho MLP và Xiong et al.
+    """
+    is_1d = (model_type.lower() in ["mlp", "xiong"])
+    exp_base = find_experiment_1_dir()
+    if exp_base is None:
+        raise FileNotFoundError("Không tìm thấy thư mục Experiment_1.")
+
+    freq_clean = split.lower().replace("split", "").replace("_", "")
+    target_dir = os.path.join(exp_base, freq_clean)
+    if not os.path.isdir(target_dir):
+        target_dir = os.path.join(exp_base, "5khz") if os.path.isdir(os.path.join(exp_base, "5khz")) else exp_base
+
+    X_tensor, metadata = load_real_experiment_for_inference(
+        target_path=target_dir,
+        x_scaler=x_scaler,
+        scale_factor=scale_factor,
+        device=device,
+        freq_filter=freq_clean if any(f in freq_clean for f in ["5k", "10k", "20k"]) else None,
+    )
+
+    if is_1d:
+        X_tensor = X_tensor.reshape(X_tensor.size(0), -1)
+
+    y_clf_list = []
+    y_wld_raw_list = []
+    for m in metadata:
+        cid = m.get("true_shape_id", -1)
+        y_clf_list.append(cid if cid is not None and cid >= 0 else 0)
+        w = float(m.get("true_w", 0.0) or 0.0)
+        l = float(m.get("true_l", 0.0) or 0.0)
+        d = float(m.get("true_d", 0.0) or 0.0)
+        y_wld_raw_list.append([w, l, d])
+
+    y_clf = torch.tensor(y_clf_list, dtype=torch.long, device=device)
+    y_wld = torch.tensor(y_wld_raw_list, dtype=torch.float32, device=device)
+    return X_tensor, y_clf, y_wld, metadata
+
+
+def get_real_dataloader(
+    split: str = "5khz",
+    model_type: str = "cnn",
+    batch_size: int = 4,
+    shuffle: bool = True,
+    x_scaler: Optional[Any] = None,
+    y_scaler: Optional[Any] = None,
+    scale_factor: float = 1.0,
+    device: str = "cpu",
+) -> DataLoader:
+    """
+    Tạo PyTorch DataLoader cho dữ liệu thực nghiệm phục vụ huấn luyện và kiểm thử.
+    """
+    X_tensor, y_clf, y_wld_raw, metadata = load_real_data_for_model(
+        model_type=model_type,
+        split=split,
+        x_scaler=x_scaler,
+        y_scaler=y_scaler,
+        scale_factor=scale_factor,
+        device=device,
+    )
+    y_wld_norm = y_wld_raw.clone()
+    ds = Real5kHzDataset(X_tensor, y_clf, y_wld_norm, y_wld_raw, metadata)
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
+
