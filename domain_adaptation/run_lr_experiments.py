@@ -8,9 +8,10 @@ ECT 5kHz DOMAIN ADAPTATION BENCHMARK: CNN_Proposed (PINN) vs CNN_NoPINN
 Mục đích:
 - Khảo sát các mức learning rate (mặc định: 1e-3, 5e-4, 1e-4) để tìm mức LR tối ưu.
 - Huấn luyện & Đánh giá ĐỒNG THỜI cả hai mô hình đối chứng cùng một phương pháp:
-    1. CNN_Proposed (Có ràng buộc vật lý Physics PINN Loss)
-    2. CNN_NoPINN   (Thuần dữ liệu Supervised Data Loss)
-- Lưu trữ TÁCH BẠCH mỗi LR vào một thư mục con riêng biệt, ngăn nắp, dễ trích xuất bảng & hình:
+    1. CNN_Proposed (Kế thừa biểu diễn vật lý PINN từ Pretrain Synthetic, finetune bằng hàm Loss thuần Supervised)
+    2. CNN_NoPINN   (Khởi tạo tiền huấn luyện không PINN, finetune bằng cùng hàm Loss thuần Supervised)
+- Cả hai mô hình sử dụng CHUNG một hàm Loss chuẩn Supervised Multi-task (Kendall uncertainty) khi finetune,
+  giúp so sánh công bằng và triệt tiêu sai số Sim-to-Real gap của giải tích trên dữ liệu thực.
     experiments_lr_study/
     ├── LR_1e-3/             (Figures, tables, checkpoints, summary cho cả PINN & NoPINN)
     ├── LR_5e-4/             (Figures, tables, checkpoints, summary cho cả PINN & NoPINN)
@@ -90,14 +91,27 @@ def parse_arguments():
         "--freeze_backbone",
         dest="freeze_backbone",
         action="store_true",
-        help="Đóng băng Backbone khi finetuning",
+        default=True,
+        help="Đóng băng Backbone khi finetuning, chỉ cập nhật 2 nhánh Headers (mặc định: True)",
     )
     parser.add_argument(
         "--no_freeze_backbone",
         dest="freeze_backbone",
         action="store_false",
-        default=False,
-        help="Không đóng băng Backbone, finetune toàn bộ mô hình (mặc định: False - finetune toàn bộ)",
+        help="Không đóng băng Backbone, finetune toàn bộ mô hình",
+    )
+    parser.add_argument(
+        "--freeze_bn",
+        dest="freeze_bn",
+        action="store_true",
+        default=True,
+        help="Đóng băng BatchNorm khi finetuning (mặc định: True)",
+    )
+    parser.add_argument(
+        "--no_freeze_bn",
+        dest="freeze_bn",
+        action="store_false",
+        help="Không đóng băng BatchNorm (mặc định: tắt)",
     )
     parser.add_argument(
         "--reset_kendall",
@@ -111,6 +125,19 @@ def parse_arguments():
         dest="reset_kendall",
         action="store_false",
         help="Giữ nguyên tham số Kendall từ pretrained checkpoint",
+    )
+    parser.add_argument(
+        "--use_pinn_loss",
+        dest="use_pinn_loss",
+        action="store_true",
+        default=True,
+        help="Bật thành phần Physics PINN Loss khi finetuning mô hình PINN (mặc định: True)",
+    )
+    parser.add_argument(
+        "--no_pinn_loss",
+        dest="use_pinn_loss",
+        action="store_false",
+        help="Tắt thành phần Physics PINN Loss (dùng thuần Supervised Data Loss)",
     )
     parser.add_argument(
         "--device",
@@ -142,20 +169,18 @@ def format_lr_folder_name(lr: float) -> str:
 def plot_grouped_lr_comparison_figure(df_pinn_vs_nopinn: pd.DataFrame, out_png: str, out_pdf: str):
     """
     Vẽ đồ thị cột nhóm chuẩn xuất bản IEEE so sánh song song giữa CNN_Proposed (PINN) và CNN_NoPINN
-    trên từng mức Learning Rate.
+    trên từng mức Learning Rate với bảng màu đồng nhất và độ phân giải cao.
     """
     try:
-        plt.rcParams.update({
-            "font.family": "serif",
-            "font.size": 11,
-            "axes.labelsize": 12,
-            "axes.titlesize": 12,
-            "xtick.labelsize": 11,
-            "ytick.labelsize": 11,
-            "figure.autolayout": True,
-        })
+        from domain_adaptation.plot_ieee_utils import (
+            setup_ieee_style,
+            save_dual_figure,
+            COLOR_PROPOSED,
+            COLOR_NOPINN,
+        )
+        setup_ieee_style()
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.5), dpi=300)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 2.9), dpi=300)
 
         lr_labels = df_pinn_vs_nopinn["LR_Label"].tolist()
         x = np.arange(len(lr_labels))
@@ -173,61 +198,60 @@ def plot_grouped_lr_comparison_figure(df_pinn_vs_nopinn: pd.DataFrame, out_png: 
         # (a) Subplot 1: Shape Classification Accuracy (%)
         # =========================================================================
         rects1 = ax1.bar(
-            x - bar_width / 2, pinn_acc, bar_width,
-            label="CNN_Proposed (PINN)", color="#1f77b4", edgecolor="black", linewidth=0.9
+            x - bar_width / 2, nopinn_acc, bar_width,
+            label="CNN_NoPINN", color=COLOR_NOPINN, edgecolor="black", linewidth=0.8
         )
         rects2 = ax1.bar(
-            x + bar_width / 2, nopinn_acc, bar_width,
-            label="CNN_NoPINN (Data-only)", color="#ff7f0e", edgecolor="black", linewidth=0.9
+            x + bar_width / 2, pinn_acc, bar_width,
+            label="CNN_Proposed (PINN)", color=COLOR_PROPOSED, edgecolor="black", linewidth=0.8
         )
-        ax1.set_title("(a) Shape Classification Accuracy", fontweight="bold", pad=10)
-        ax1.set_ylabel("Accuracy (%)", fontweight="bold")
+        ax1.text(0.04, 0.93, "(a) Shape Accuracy", transform=ax1.transAxes, fontsize=8.0, fontweight="bold", va="top")
+        ax1.set_ylabel("Accuracy (%)", fontsize=8.5)
         ax1.set_xticks(x)
-        ax1.set_xticklabels(lr_labels, fontweight="bold")
+        ax1.set_xticklabels(lr_labels, fontsize=8.0)
         ax1.set_ylim(0, 115)
-        ax1.grid(axis="y", linestyle="--", alpha=0.5)
-        ax1.legend(loc="upper right", framealpha=0.9)
+        ax1.grid(axis="y", linestyle=":", alpha=0.6)
+        ax1.legend(loc="upper right", frameon=True, fontsize=7.5)
 
         for rect in rects1:
             h = rect.get_height()
-            ax1.text(rect.get_x() + rect.get_width() / 2.0, h + 2.0, f"{h:.1f}%", ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+            ax1.text(rect.get_x() + rect.get_width() / 2.0, h + 1.8, f"{h:.0f}%", ha="center", va="bottom", fontsize=7.2, fontweight="bold")
         for rect in rects2:
             h = rect.get_height()
-            ax1.text(rect.get_x() + rect.get_width() / 2.0, h + 2.0, f"{h:.1f}%", ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+            ax1.text(rect.get_x() + rect.get_width() / 2.0, h + 1.8, f"{h:.0f}%", ha="center", va="bottom", fontsize=7.2, fontweight="bold")
 
         # =========================================================================
         # (b) Subplot 2: Overall Sizing MAE (mm)
         # =========================================================================
         rects3 = ax2.bar(
-            x - bar_width / 2, pinn_mae, bar_width,
-            label="CNN_Proposed (PINN)", color="#2ca02c", edgecolor="black", linewidth=0.9
+            x - bar_width / 2, nopinn_mae, bar_width,
+            label="CNN_NoPINN", color=COLOR_NOPINN, edgecolor="black", linewidth=0.8
         )
         rects4 = ax2.bar(
-            x + bar_width / 2, nopinn_mae, bar_width,
-            label="CNN_NoPINN (Data-only)", color="#d62728", edgecolor="black", linewidth=0.9
+            x + bar_width / 2, pinn_mae, bar_width,
+            label="CNN_Proposed (PINN)", color=COLOR_PROPOSED, edgecolor="black", linewidth=0.8
         )
-        ax2.set_title("(b) 3D Sizing Overall MAE", fontweight="bold", pad=10)
-        ax2.set_ylabel("Mean Absolute Error (mm)", fontweight="bold")
+        ax2.text(0.04, 0.93, "(b) Overall Sizing MAE", transform=ax2.transAxes, fontsize=8.0, fontweight="bold", va="top")
+        ax2.set_ylabel("MAE (mm)", fontsize=8.5)
         ax2.set_xticks(x)
-        ax2.set_xticklabels(lr_labels, fontweight="bold")
+        ax2.set_xticklabels(lr_labels, fontsize=8.0)
         max_val = max(max(pinn_mae), max(nopinn_mae)) if (pinn_mae and nopinn_mae) else 1.0
-        ax2.set_ylim(0, max_val * 1.25)
-        ax2.grid(axis="y", linestyle="--", alpha=0.5)
-        ax2.legend(loc="upper left", framealpha=0.9)
+        ax2.set_ylim(0, max_val * 1.30)
+        ax2.grid(axis="y", linestyle=":", alpha=0.6)
+        ax2.legend(loc="upper right", frameon=True, fontsize=7.5)
 
         for rect in rects3:
             h = rect.get_height()
-            ax2.text(rect.get_x() + rect.get_width() / 2.0, h + (max_val * 0.02), f"{h:.3f}", ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+            ax2.text(rect.get_x() + rect.get_width() / 2.0, h + (max_val * 0.02), f"{h:.3f}", ha="center", va="bottom", fontsize=7.0, fontweight="bold")
         for rect in rects4:
             h = rect.get_height()
-            ax2.text(rect.get_x() + rect.get_width() / 2.0, h + (max_val * 0.02), f"{h:.3f}", ha="center", va="bottom", fontsize=9.5, fontweight="bold")
+            ax2.text(rect.get_x() + rect.get_width() / 2.0, h + (max_val * 0.02), f"{h:.3f}", ha="center", va="bottom", fontsize=7.0, fontweight="bold")
 
         plt.tight_layout()
-        plt.savefig(out_png, dpi=300)
-        plt.savefig(out_pdf)
-        plt.close()
+        save_dual_figure(fig, out_png)
     except Exception as e:
         print(f"[WARN] Không thể vẽ biểu đồ so sánh LR: {e}")
+
 
 
 def main():
@@ -274,6 +298,7 @@ def main():
     print(f"Mô hình đối chứng        : {[m['key'] for m in models_to_run]}")
     print(f"Chế độ lấy kết quả       : {'Epoch cuối cùng' if use_final_epoch else 'Best Val Loss (Mặc định)'}")
     print(f"Đóng băng Backbone       : {args.freeze_backbone} {'(Freeze)' if args.freeze_backbone else '(Finetune toàn bộ mô hình)'}")
+    print(f"Hàm Loss Finetuning      : {'Bật Physics PINN Loss' if args.use_pinn_loss else 'Thuần Supervised Data Loss (CNN_Proposed y hệt CNN_NoPINN)'}")
     print(f"Reset Kendall Uncertainty: {args.reset_kendall}")
     print(f"Thư mục lưu trữ mẹ       : {args.output_dir}")
     print("=" * 80 + "\n")
@@ -305,11 +330,13 @@ def main():
                 epochs=args.epochs,
                 lr=lr,
                 freeze_backbone=args.freeze_backbone,
+                freeze_bn=args.freeze_bn,
                 device=args.device,
                 output_dir=lr_dir,
                 reset_kendall=args.reset_kendall,
                 early_stopping=False,
                 use_final_epoch=use_final_epoch,
+                use_pinn_loss=args.use_pinn_loss,
                 fixed_lr=True,
             )
         else:
@@ -318,11 +345,13 @@ def main():
                 epochs=args.epochs,
                 lr=lr,
                 freeze_backbone=args.freeze_backbone,
+                freeze_bn=args.freeze_bn,
                 device=args.device,
                 output_dir=lr_dir,
                 reset_kendall=args.reset_kendall,
                 early_stopping=False,
                 use_final_epoch=use_final_epoch,
+                use_pinn_loss=args.use_pinn_loss,
                 fixed_lr=True,
             )
 

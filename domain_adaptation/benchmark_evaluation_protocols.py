@@ -77,16 +77,20 @@ from domain_adaptation.cnn.losses import (
 )
 from domain_adaptation.mlp.losses import MultitaskMLPTotalLoss
 from domain_adaptation.xiong.losses import XiongTotalLoss
+from domain_adaptation.synthetic_test_eval import evaluate_and_log_forgetting
 from domain_adaptation.plot_ieee_utils import (
     setup_ieee_style,
+    save_dual_figure,
     save_ieee_figure,
+    get_protocol_subdirs,
+    get_cross_protocol_dir,
     plot_separate_loss_curve_single_model,
     plot_all_methods_loss_grid,
     plot_confusion_matrix_ieee,
-    plot_benchmark_comparison_ieee,
-    plot_dimensional_mae_breakdown_ieee,
+    plot_regression_scatter_ieee,
+    plot_protocol_metrics_ieee,
     plot_finetuned_two_protocols_comparison,
-    plot_linear_fit_wld_ieee,
+    generate_all_organized_figures_from_run,
 )
 
 
@@ -211,8 +215,9 @@ def finetune_single_model(
     y_clf_val: Optional[torch.Tensor] = None,
     y_wld_val: Optional[torch.Tensor] = None,
     epochs: int = 500,
-    lr: float = 5e-3,
-    freeze_backbone: bool = False,
+    lr: float = 1e-5,
+    freeze_backbone: bool = True,
+    freeze_bn: bool = True,
     patience: int = 100,
     device: str = "cpu",
     variant: str = "pinn",
@@ -222,7 +227,7 @@ def finetune_single_model(
     alpha_pinn: float = 1.0,
     early_stopping: bool = False,
     use_final_epoch: bool = False,
-    use_pinn_loss: Optional[bool] = None,
+    use_pinn_loss: bool = True,
     fixed_lr: bool = True,
 ) -> Tuple[nn.Module, Dict[str, Any]]:
     """
@@ -230,11 +235,12 @@ def finetune_single_model(
     - Nạp mô hình từ Pre-trained Checkpoint.
     - Reset tham số bất định Kendall về 0.0 (hệ số exp(-s) = 1.0) để cân bằng các tác vụ (hoặc giữ nguyên nếu reset_kendall=False).
     - Đóng băng Backbone (bảo tồn tri thức trích xuất đặc trưng vật lý) & khóa BatchNorm eval của Backbone.
+    - freeze_bn: Mặc định True -> Khóa running stats (eval mode) và affine parameters của BatchNorm, ngăn nhiễu phân phối do tập mẫu nhỏ trên miền thực nghiệm.
     - Cập nhật các tầng Linear của Heads chuẩn (không chứa BatchNorm).
     - Hỗ trợ LR cố định (Fixed LR) hoặc Cosine Annealing Learning Rate Scheduler.
     - Hỗ trợ tắt Early Stopping (huấn luyện trọn vẹn số epochs yêu cầu).
     - Tùy chọn lưu giữ và đánh giá bằng trọng số Epoch cuối cùng (final epoch) hoặc Best Val Loss.
-    - use_pinn_loss: Mặc định None -> Mỗi mô hình gọi đúng hàm Loss bản thể (PINN dùng Physics PINN loss, NoPINN dùng thuần Supervised).
+    - use_pinn_loss: Mặc định True -> Bật Physics PINN Loss cho các mô hình có biến thể PINN (CNN_Proposed, MLP, XIONG). Nếu False: tắt PINN loss (thuần Supervised Data Loss).
     """
     model = copy.deepcopy(base_model).to(device)
 
@@ -244,20 +250,24 @@ def finetune_single_model(
             if hasattr(model, attr) and isinstance(getattr(model, attr), nn.Parameter):
                 getattr(model, attr).data.fill_(0.0)
 
-    # Đóng băng Backbone nếu được yêu cầu, hoặc finetune toàn bộ mô hình
-    if freeze_backbone and hasattr(model, "backbone"):
-        for p in model.backbone.parameters():
+    # Đóng băng Backbone nếu được yêu cầu: CHỈ cho phép cập nhật 2 nhánh Headers (Classification & 3D Regression)
+    if freeze_backbone:
+        # 1. Khóa tất cả các tham số trước (mặc định requires_grad = False)
+        for p in model.parameters():
             p.requires_grad = False
-        # Đảm bảo các Heads và tham số bất định luôn ở chế độ Trainable
+        # 2. CHỈ mở khóa cập nhật gradient cho đúng 2 nhánh task heads:
+        # Nhánh 1: Classification Head (classifier)
         if hasattr(model, "classifier"):
             for p in model.classifier.parameters():
                 p.requires_grad = True
+        # Nhánh 2: 3D Regression Head (regressor_backbone + reg_head hoặc reg_head)
         if hasattr(model, "regressor_backbone"):
             for p in model.regressor_backbone.parameters():
                 p.requires_grad = True
         if hasattr(model, "reg_head"):
             for p in model.reg_head.parameters():
                 p.requires_grad = True
+        # Tham số bất định cân bằng mất mát Kendall (Homoscedastic uncertainty)
         for attr in ["log_var_clf", "log_var_w", "log_var_l", "log_var_d", "log_var_reg"]:
             if hasattr(model, attr) and isinstance(getattr(model, attr), nn.Parameter):
                 getattr(model, attr).requires_grad = True
@@ -265,6 +275,16 @@ def finetune_single_model(
         # Không đóng băng: Cho phép cập nhật toàn bộ tham số mô hình (Backbone + Heads)
         for p in model.parameters():
             p.requires_grad = True
+
+    # 3. Đóng băng các tầng BatchNorm (Freeze BN) nếu được yêu cầu:
+    # Khóa running_mean, running_var (eval mode) và affine params (gamma, beta)
+    # Giữ vững phân phối đặc trưng vật lý pretrain, ngăn trôi dạt do batch nhỏ trên miền thực nghiệm
+    if freeze_bn:
+        for m in model.modules():
+            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                m.eval()
+                for p in m.parameters():
+                    p.requires_grad = False
 
     trainable = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.Adam(trainable, lr=lr)
@@ -274,13 +294,14 @@ def finetune_single_model(
     else:
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
-    # 4. Khởi tạo hàm Loss tương ứng theo từng mô hình (Loss nào thì gọi đúng loss đấy)
-    # - Model PINN (variant == "pinn"): Gọi đúng hàm Loss PINN có thành phần Physics Loss (alpha * L_physics)
-    # - Model NoPINN (variant == "nopinn"): Gọi đúng hàm Loss NoPINN thuần supervised data loss
-    if use_pinn_loss is None:
+    # 4. Khởi tạo hàm Loss khi finetuning:
+    # Khi use_pinn_loss=True (mặc định), các mô hình biến thể PINN (CNN_Proposed, MLP, XIONG)
+    # sẽ tính thêm thành phần Physics Loss điều hòa theo hệ số alpha_pinn.
+    # Ngược lại, nếu use_pinn_loss=False hoặc biến thể nopinn, mô hình sử dụng thuần Supervised Data Loss.
+    if use_pinn_loss:
         use_pinn = (variant.lower() == "pinn")
     else:
-        use_pinn = use_pinn_loss and (variant.lower() == "pinn")
+        use_pinn = False
     shape_map = get_shape_physics_map() if use_pinn else None
 
     if model_type == "cnn":
@@ -306,6 +327,7 @@ def finetune_single_model(
     }
 
     best_val_loss = float("inf")
+    best_train_loss = float("inf")
     best_weights = copy.deepcopy(model.state_dict())
     patience_counter = 0
     has_val = (X_val is not None and y_wld_val is not None)
@@ -325,7 +347,7 @@ def finetune_single_model(
     if use_pinn:
         loss_desc += f" + alpha * Physics_Loss, alpha={alpha_pinn})"
     else:
-        loss_desc += " [Thuần Supervised Data Loss - Không Physics PINN])"
+        loss_desc += " [Thuần Supervised Data Loss - Y hệt CNN_NoPINN])"
 
     print("\n" + "-" * 75)
     print(f"  [FINETUNING CONFIG] Mô hình: {model_type.upper()} ({variant.upper()})")
@@ -340,9 +362,13 @@ def finetune_single_model(
     print(f"  * Tốc độ học (LR)    : {lr_desc}")
     print(f"  * Trọng số PINN Alpha: {alpha_pinn}")
     print(f"  * Hàm Loss chi tiết  : {loss_desc}")
-    print(f"  * Đóng băng Backbone : {freeze_backbone} (Trainable params: {trainable_params:,} / Total: {total_params:,})")
+    frozen_params = total_params - trainable_params
+    print(f"  * Đóng băng Backbone : {freeze_backbone} (Trainable params: {trainable_params:,} / Frozen: {frozen_params:,} / Total: {total_params:,})")
+    if freeze_backbone:
+        print(f"    -> Đã khóa cứng model.backbone (eval mode, zero grad). CHỈ cập nhật 2 nhánh Headers: classifier & regressor.")
+    print(f"  * Đóng băng BatchNorm: {freeze_bn} {'(Khóa running stats & affine weights ở eval mode)' if freeze_bn else '(Cập nhật thống kê theo batch thực)'}")
     print(f"  * Reset Kendall Unc. : {reset_kendall} {'(log_var -> 0.0, exp(-s) = 1.0)' if reset_kendall else '(Giữ nguyên bản từ checkpoint)'}")
-    print(f"  * Chế độ lưu kết quả : {'Trọng số Epoch cuối cùng' if use_final_epoch else 'Trọng số Tối ưu Best Val Loss'}")
+    print(f"  * Chế độ lưu kết quả : {'Trọng số Epoch cuối cùng' if use_final_epoch else 'Trọng số Tối ưu Best Epoch (Lowest Loss)'}")
     print("-" * 75)
 
     v_val_item = 0.0
@@ -350,6 +376,10 @@ def finetune_single_model(
         model.train()
         if freeze_backbone and hasattr(model, "backbone"):
             model.backbone.eval()  # Khóa cứng BatchNorm stats của Backbone để chống trôi đặc trưng
+        if freeze_bn:
+            for m in model.modules():
+                if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                    m.eval()
         optimizer.zero_grad()
 
         # Forward train
@@ -482,8 +512,8 @@ def finetune_single_model(
             history["val_loss_clf"].append(float(val_clf))
             history["val_loss_reg"].append(float(val_reg))
 
-            # Early stopping check
-            if v_val_item < best_val_loss - 1e-4:
+            # Best epoch & early stopping check (nhạy với các bước biến thiên loss nhỏ ở LR = 1e-7)
+            if v_val_item < best_val_loss:
                 best_val_loss = v_val_item
                 history["best_epoch"] = ep + 1
                 best_weights = copy.deepcopy(model.state_dict())
@@ -495,19 +525,24 @@ def finetune_single_model(
                     print(f"    [Dừng sớm] Không cải thiện Loss sau {patience} epochs liên tiếp -> Dừng tại Epoch {ep + 1}.")
                     break
         else:
-            best_weights = copy.deepcopy(model.state_dict())
-            history["best_epoch"] = ep + 1
+            # Không có tập validation: tập test crack được bảo lưu độc lập, không tham gia huấn luyện.
+            # Lưu lại trọng số tại epoch có Train Loss tối ưu nhất
+            tr_total_loss = float(loss.item())
+            if tr_total_loss < best_train_loss:
+                best_train_loss = tr_total_loss
+                best_weights = copy.deepcopy(model.state_dict())
+                history["best_epoch"] = ep + 1
 
         # In tiến độ định kỳ (mỗi 500 epoch nếu >= 2000 epoch) hoặc tại epoch cuối
         log_interval = 500 if epochs >= 2000 else (100 if epochs >= 500 else 50)
         if (ep + 1) % log_interval == 0 or (ep + 1) == epochs:
-            val_info = f" | Val Loss = {v_val_item:.4f}" if has_val else ""
+            val_info = f" | Val Loss = {v_val_item:.6f}" if has_val else ""
             current_lr_val = lr if (fixed_lr or scheduler is None) else scheduler.get_last_lr()[0]
-            print(f"    [Epoch {ep+1:04d}/{epochs}] Train Loss = {loss.item():.4f} (Clf={tr_clf:.4f}, Reg={tr_reg:.4f}){val_info} | LR = {current_lr_val:.2e}")
+            print(f"    [Epoch {ep+1:04d}/{epochs}] Train Loss = {loss.item():.6f} (Clf={tr_clf:.4f}, Reg={tr_reg:.4f}){val_info} | LR = {current_lr_val:.2e}")
 
     # Xử lý trọng số mô hình đầu ra
     if use_final_epoch:
-        # Giữ nguyên trọng số tại epoch cuối cùng (Epoch 2000)
+        # Giữ nguyên trọng số tại epoch cuối cùng
         model.eval()
         stop_msg = f"Dừng sớm tại Epoch {history['early_stopped_at']}" if history['early_stopped_at'] else f"Hoàn tất đủ {epochs} epochs"
         print(f"    -> [Hoàn thành] {stop_msg} | Sử dụng và lưu trữ trọng số mô hình tại Epoch cuối cùng (Epoch {ep + 1})\n")
@@ -516,8 +551,8 @@ def finetune_single_model(
         model.load_state_dict(best_weights)
         model.eval()
         stop_msg = f"Dừng sớm tại Epoch {history['early_stopped_at']}" if history['early_stopped_at'] else f"Hoàn tất đủ {epochs} epochs"
-        val_disp = f" (Best Val Loss = {best_val_loss:.4f})" if has_val else ""
-        print(f"    -> [Hoàn thành] {stop_msg} | Khôi phục trọng số tối ưu tại Epoch {history['best_epoch']}{val_disp}\n")
+        val_disp = f" (Best Val Loss = {best_val_loss:.6f})" if has_val else f" (Best Train Loss = {best_train_loss:.6f})"
+        print(f"    -> [Hoàn thành] {stop_msg} | Khôi phục trọng số tối ưu tại Best Epoch {history['best_epoch']}/{epochs}{val_disp}\n")
     return model, history
 
 
@@ -527,16 +562,18 @@ def finetune_single_model(
 def run_protocol_1_scan_split(
     models_to_test: List[Dict[str, str]],
     epochs: int = 500,
-    lr: float = 5e-3,
-    freeze_backbone: bool = False,
+    lr: float = 1e-5,
+    freeze_backbone: bool = True,
+    freeze_bn: bool = True,
     patience: int = 100,
     device: str = "cpu",
     output_dir: str = "domain_adaptation/finetune_results/protocols",
     reset_kendall: bool = True,
     early_stopping: bool = False,
     use_final_epoch: bool = False,
-    use_pinn_loss: Optional[bool] = None,
+    use_pinn_loss: bool = True,
     fixed_lr: bool = True,
+    check_forgetting: bool = True,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Thực thi toàn diện Hướng 1:
@@ -545,16 +582,14 @@ def run_protocol_1_scan_split(
     - Đánh giá cả Pretrained (Zero-shot) và Finetuned.
     - Vẽ riêng các đường Loss khi Finetuning cho từng phương pháp.
     """
-    if use_pinn_loss is None:
-        loss_mode_label = "Mỗi mô hình dùng đúng Loss tương ứng (PINN có Physics Loss, NoPINN thuần Data)"
-    elif use_pinn_loss:
-        loss_mode_label = "Ép buộc bật PINN Physics Loss cho tất cả mô hình"
+    if use_pinn_loss:
+        loss_mode_label = "Bật Physics Loss cho mô hình PINN"
     else:
-        loss_mode_label = "Tắt hoàn toàn PINN Physics Loss (chỉ dùng Data Loss)"
+        loss_mode_label = "Thuần Supervised Data Loss (CNN_Proposed y hệt CNN_NoPINN)"
 
     print("\n" + "=" * 80)
     print("HƯỚNG 1 (GIAO THỨC 1): FINETUNE SCAN 1 -> TEST MÙ SCAN 2")
-    print(f"Cấu hình: Freeze Backbone = {freeze_backbone} | Max Epochs = {epochs} | LR = {lr} | Early Stopping = {early_stopping} | Hàm Loss = {loss_mode_label} | Save Final = {use_final_epoch}")
+    print(f"Cấu hình: Freeze Backbone = {freeze_backbone} | Freeze BN = {freeze_bn} | Max Epochs = {epochs} | LR = {lr} | Early Stopping = {early_stopping} | Hàm Loss = {loss_mode_label} | Save Final = {use_final_epoch}")
     print("=" * 80)
 
     tables_dir = os.path.join(output_dir, "tables")
@@ -563,6 +598,7 @@ def run_protocol_1_scan_split(
     os.makedirs(tables_dir, exist_ok=True)
     os.makedirs(figures_dir, exist_ok=True)
     os.makedirs(checkpoints_dir, exist_ok=True)
+    subdirs_p1 = get_protocol_subdirs(figures_dir, protocol=1)
 
     results_summary = []
     histories_dict = {}
@@ -612,6 +648,7 @@ def run_protocol_1_scan_split(
             epochs=epochs,
             lr=lr,
             freeze_backbone=freeze_backbone,
+            freeze_bn=freeze_bn,
             patience=patience,
             device=device,
             variant=var,
@@ -626,7 +663,7 @@ def run_protocol_1_scan_split(
         )
         histories_dict[key] = hist
 
-        # Lưu checkpoint mô hình đã finetune (lưu rõ ràng trạng thái epoch cuối cùng)
+        # Lưu checkpoint mô hình đã finetune (lưu trọng số tối ưu Best Epoch)
         ckpt_save_path = os.path.join(checkpoints_dir, f"finetuned_{key.lower()}.pth")
         torch.save({
             "model_state_dict": finetuned_m.state_dict(),
@@ -635,9 +672,12 @@ def run_protocol_1_scan_split(
             "total_epochs": epochs,
             "final_epoch": hist["epoch"][-1] if hist["epoch"] else epochs,
             "best_epoch": hist["best_epoch"],
+            "best_loss": hist["val_loss"][hist["best_epoch"] - 1] if hist.get("val_loss") else hist["train_loss"][hist["best_epoch"] - 1],
             "use_final_epoch": use_final_epoch,
+            "freeze_backbone": freeze_backbone,
+            "lr": lr,
         }, ckpt_save_path)
-        print(f"    [Checkpoint] Đã lưu mô hình finetuned vào: {os.path.basename(ckpt_save_path)}")
+        print(f"    [Checkpoint Best Epoch {hist['best_epoch']}] Đã lưu mô hình tối ưu vào: {os.path.basename(ckpt_save_path)}")
 
         # 3. Đánh giá Finetuned trên Scan 2 (Inference chi tiết)
         p_sh_post, p_wld_post, _, _ = predict_and_denormalize(finetuned_m, X_te, y_scaler=y_scaler)
@@ -675,43 +715,47 @@ def run_protocol_1_scan_split(
         loss_history_csv = os.path.join(tables_dir, f"loss_history_protocol1_{key.lower()}.csv")
         df_loss_history.to_csv(loss_history_csv, index=False)
 
-        # 4. Vẽ riêng đường Loss khi Finetune cho mô hình này vào figures_dir
-        loss_fig_path = os.path.join(figures_dir, f"fig_protocol1_separate_loss_{key}")
+        # 4. Vẽ riêng đường Loss khi Finetune cho mô hình này vào 01_protocol1_scan_split/loss_convergence/
+        loss_fig_path = os.path.join(subdirs_p1["loss"], f"loss_curve_{key}")
         plot_separate_loss_curve_single_model(
             history=hist,
             model_name=key,
             output_base_path=loss_fig_path,
         )
 
-        # 5. Vẽ ma trận nhầm lẫn chuẩn IEEE vào figures_dir
-        cm_fig_path = os.path.join(figures_dir, f"fig_protocol1_confusion_matrix_{key}")
+        # 5. Vẽ ma trận nhầm lẫn chuẩn IEEE vào 01_protocol1_scan_split/confusion_matrices/
+        cm_fig_path = os.path.join(subdirs_p1["cm"], f"cm_{key}")
         plot_confusion_matrix_ieee(
             confusion_matrix=stat_post["confusion_matrix"],
             class_names=DEFAULT_UNIQUE_SHAPES,
-            model_name=f"{key} (Finetuned)",
+            model_name=key,
             output_base_path=cm_fig_path,
             acc_val=stat_post["overall_acc"] if m_type != "xiong" else None,
         )
 
-        # 5b. Xuất đồ thị chuẩn gói figures_ieee (Fig 2 & Fig 3 Parity Box)
-        try:
-            from figures_ieee import plot_fig2_confusion_matrix, plot_fig3_regression_scatter
-            if m_type != "xiong":
-                plot_fig2_confusion_matrix(
-                    y_true=true_sh_test,
-                    y_pred=p_sh_post,
-                    unique_shapes=DEFAULT_UNIQUE_SHAPES,
-                    output_dir=figures_dir,
-                    filename_prefix=f"fig2_confusion_matrix_ieee_{key}",
+        # 5b. Vẽ tương quan hồi quy kích thước 3D chuẩn IEEE vào 01_protocol1_scan_split/regression_scatter/
+        reg_fig_path = os.path.join(subdirs_p1["reg"], f"regression_scatter_{key}")
+        plot_regression_scatter_ieee(
+            true_wld=true_wld_test,
+            pred_wld=p_wld_post,
+            model_name=key,
+            output_base_path=reg_fig_path,
+        )
+
+        # 5c. Kiểm định Quên tri thức cũ (Catastrophic Forgetting) trên tập Test mô phỏng Synthetic (3,306 mẫu)
+        if check_forgetting:
+            try:
+                evaluate_and_log_forgetting(
+                    pretrained_model=base_model,
+                    finetuned_model=finetuned_m,
+                    model_name=key,
+                    bundle=bundle,
+                    output_dir=output_dir,
+                    protocol_name="protocol1_scan_split",
+                    device=device,
                 )
-            plot_fig3_regression_scatter(
-                y_true_wld=true_wld_test,
-                y_pred_wld=p_wld_post,
-                output_dir=figures_dir,
-                filename_prefix=f"fig3_regression_scatter_ieee_{key}",
-            )
-        except Exception as e_fig:
-            print(f"    [figures_ieee] Cảnh báo xuất hình: {e_fig}")
+            except Exception as e_fgt:
+                print(f"    [Forgetting Check Cảnh báo] {e_fgt}")
 
         # 6. Ghi nhận kết quả
         for stage, stat_s, reg_s in [("Pretrained", stat_pre, reg_pre), ("Finetuned", stat_post, reg_post)]:
@@ -736,22 +780,17 @@ def run_protocol_1_scan_split(
     csv_out = os.path.join(tables_dir, "protocol1_scan_split_results.csv")
     df_res.to_csv(csv_out, index=False)
 
-    # Vẽ bảng ghép Loss của tất cả các phương pháp vào figures_dir
+    # Vẽ bảng ghép Loss của tất cả các phương pháp vào 01_protocol1_scan_split/loss_convergence/
     plot_all_methods_loss_grid(
         histories_dict=histories_dict,
-        output_base_path=os.path.join(figures_dir, "fig_protocol1_all_methods_loss_grid"),
+        output_base_path=os.path.join(subdirs_p1["loss"], "loss_comparison_grid"),
     )
 
-    # Vẽ biểu đồ so sánh tổng hợp Accuracy & NMAE vào figures_dir
-    plot_benchmark_comparison_ieee(
+    # Vẽ biểu đồ cột đánh giá chỉ số Accuracy, NMAE & MAE từng chiều vào 01_protocol1_scan_split/performance_metrics/
+    plot_protocol_metrics_ieee(
         df_results=df_res,
-        output_base_path=os.path.join(figures_dir, "fig_protocol1_comparison_acc_mae"),
-    )
-
-    # Vẽ biểu đồ MAE từng chiều W, L, D độc lập với trục tung tối ưu
-    plot_dimensional_mae_breakdown_ieee(
-        df_results=df_res,
-        output_base_path=os.path.join(figures_dir, "fig_protocol1_wld_mae_breakdown"),
+        out_dir_metrics=subdirs_p1["metrics"],
+        protocol_num=1,
     )
 
     print(f"\n[HOÀN THÀNH HƯỚNG 1] Bảng tổng hợp đã lưu vào: {csv_out}")
@@ -767,42 +806,47 @@ def run_protocol_1_scan_split(
 def run_protocol_2_kfold_defect_split(
     models_to_test: List[Dict[str, str]],
     epochs: int = 500,
-    lr: float = 5e-3,
-    freeze_backbone: bool = False,
+    lr: float = 1e-5,
+    freeze_backbone: bool = True,
+    freeze_bn: bool = True,
     patience: int = 100,
     device: str = "cpu",
     output_dir: str = "domain_adaptation/finetune_results/protocols",
     reset_kendall: bool = True,
     early_stopping: bool = False,
     use_final_epoch: bool = False,
-    use_pinn_loss: Optional[bool] = None,
+    use_pinn_loss: bool = True,
     fixed_lr: bool = True,
+    single_crack: Optional[int] = None,
+    check_forgetting: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Thực thi toàn diện Hướng 2:
     - 10-Fold Leave-One-Defect-Out (LODO).
-    - Mỗi fold bỏ ra 1 khuyết tật (cả 2 lần quét = 2 mẫu) KHÔNG HỌC làm Test mù.
-    - Huấn luyện trên 18 mẫu của 9 khuyết tật còn lại.
-    - Gom toàn bộ 20 dự đoán out-of-fold.
-    - Tính TP, FP, FN, TN, Accuracy từng class và Overall Accuracy.
-    - Vẽ ma trận nhầm lẫn và biểu đồ so sánh chuẩn IEEE với chú thích ở ngoài.
+    - Mỗi fold bỏ ra 1 khuyết tật (cả 2 lần quét = 2 mẫu) HOÀN TOÀN KHÔNG HỌC (không tính loss, không val) để làm Test mù.
+    - Huấn luyện độc lập trên 18 mẫu của 9 khuyết tật còn lại.
+    - Dự đoán mù (blind inference) trên 2 mẫu của khuyết tật được bảo lưu.
+    - Gom toàn bộ dự đoán out-of-fold để tính Accuracy từng class, Overall Accuracy và MAE.
+    - Hỗ trợ single_crack (1-10) nếu người dùng muốn chỉ định kiểm tra 1 vết nứt cụ thể.
     """
-    if use_pinn_loss is None:
-        loss_mode_label = "Mỗi mô hình dùng đúng Loss tương ứng (PINN có Physics Loss, NoPINN thuần Data)"
-    elif use_pinn_loss:
-        loss_mode_label = "Ép buộc bật PINN Physics Loss cho tất cả mô hình"
+    if use_pinn_loss:
+        loss_mode_label = "Bật Physics Loss cho mô hình PINN"
     else:
-        loss_mode_label = "Tắt hoàn toàn PINN Physics Loss (chỉ dùng Data Loss)"
+        loss_mode_label = "Thuần Supervised Data Loss (CNN_Proposed y hệt CNN_NoPINN)"
 
     print("\n" + "=" * 80)
     print("HƯỚNG 2 (GIAO THỨC 2): 10-FOLD LEAVE-ONE-DEFECT-OUT (LODO) CROSS VALIDATION")
-    print(f"Cấu hình: Freeze Backbone = {freeze_backbone} | Max Epochs = {epochs} | LR = {lr} | Early Stopping = {early_stopping} | Hàm Loss = {loss_mode_label} | Save Final = {use_final_epoch}")
+    crack_str = f"Chỉ định Vết nứt No.{single_crack}" if single_crack is not None else "Đầy đủ 10 Vết nứt (10 Folds)"
+    print(f"Cấu hình: Chế độ = {crack_str} | Freeze Backbone = {freeze_backbone} | Freeze BN = {freeze_bn} | Max Epochs = {epochs} | LR = {lr} | Hàm Loss = {loss_mode_label} | Save Final = {use_final_epoch}")
     print("=" * 80)
 
     tables_dir = os.path.join(output_dir, "tables")
     figures_dir = os.path.join(output_dir, "figures")
+    checkpoints_dir = os.path.join(output_dir, "checkpoints")
     os.makedirs(tables_dir, exist_ok=True)
     os.makedirs(figures_dir, exist_ok=True)
+    os.makedirs(checkpoints_dir, exist_ok=True)
+    subdirs_p2 = get_protocol_subdirs(figures_dir, protocol=2)
 
     summary_rows = []
     all_models_tp_fp = []
@@ -811,7 +855,7 @@ def run_protocol_2_kfold_defect_split(
         key = info["key"]
         m_type = info["type"]
         var = info["variant"]
-        print(f"\n>>> [Hướng 2] Đang chạy 10-Fold LODO cho mô hình: {key} ...")
+        print(f"\n>>> [Hướng 2] Đang chạy LODO cho mô hình: {key} ({crack_str}) ...")
 
         try:
             bundle = load_5khz_fully_prepared(model_type=m_type, variant=var, device=device)
@@ -831,23 +875,37 @@ def run_protocol_2_kfold_defect_split(
         oof_pred_shapes = [None] * len(metadata)
         oof_pred_wld = np.zeros((len(metadata), 3))
 
-        for f_idx, fold_data in enumerate(folds, start=1):
+        if single_crack is not None:
+            folds_to_run = [f for f in folds if f["held_out_crack"] == single_crack]
+            if not folds_to_run:
+                print(f"    [CẢNH BÁO] Không tìm thấy vết nứt No.{single_crack}. Sẽ chạy đủ 10 folds.")
+                folds_to_run = folds
+        else:
+            folds_to_run = folds
+
+        last_hist = None
+        f_model = None
+        for f_idx, fold_data in enumerate(folds_to_run, start=1):
             held_out = fold_data["held_out_crack"]
             tr = fold_data["train"]
             te = fold_data["test"]
 
-            f_model, _ = finetune_single_model(
+            # Huấn luyện hoàn toàn ĐỘC LẬP trên các vết nứt còn lại trong tr["X"] (18 mẫu).
+            # Vết nứt No.{held_out} (2 mẫu) bị LOẠI BỎ TRIỆT ĐỂ khỏi quá trình huấn luyện:
+            # X_val = None -> Không tính loss, không tính gradient (không học) và không dùng để chọn checkpoint.
+            f_model, last_hist = finetune_single_model(
                 model_type=m_type,
                 base_model=base_model,
                 X_train=tr["X"],
                 y_clf_train=tr["y_clf"],
                 y_wld_train=tr["y_wld_norm"],
-                X_val=te["X"],
-                y_clf_val=te["y_clf"] if m_type in ["cnn", "mlp"] else None,
-                y_wld_val=te["y_wld_norm"],
+                X_val=None,
+                y_clf_val=None,
+                y_wld_val=None,
                 epochs=epochs,
                 lr=lr,
                 freeze_backbone=freeze_backbone,
+                freeze_bn=freeze_bn,
                 patience=patience,
                 device=device,
                 variant=var,
@@ -855,30 +913,42 @@ def run_protocol_2_kfold_defect_split(
                 x_scaler=bundle.get("x_scaler", None),
                 reset_kendall=reset_kendall,
                 alpha_pinn=alpha_pinn,
-                early_stopping=early_stopping,
+                early_stopping=False,
                 use_final_epoch=use_final_epoch,
                 use_pinn_loss=use_pinn_loss,
                 fixed_lr=fixed_lr,
             )
 
-            # Dự đoán out-of-fold trên 2 mẫu của fold này
+            # Dự đoán kiểm thử mù hoàn toàn trên 2 mẫu của vết nứt bị bỏ ra
             p_sh, p_wld, _, _ = predict_and_denormalize(f_model, te["X"], y_scaler=y_scaler)
             for loc_i, glob_i in enumerate(te["indices"]):
                 oof_pred_shapes[glob_i] = p_sh[loc_i]
                 oof_pred_wld[glob_i] = p_wld[loc_i]
 
-            print(f"    Fold {f_idx:02d}/10: Vết nứt No.{held_out} đã hoàn tất.")
+            print(f"    Fold {fold_data['fold']:02d}/10: Vết nứt No.{held_out} (Test mù) đã hoàn tất.")
 
-        # Gom toàn bộ 20 dự đoán out-of-fold
-        true_shapes_all = [m["true_shape"] for m in metadata]
-        true_wld_all = np.array([[m["true_w"], m["true_l"], m["true_d"]] for m in metadata])
+        # Gom dự đoán out-of-fold (trên các mẫu được kiểm thử)
+        if single_crack is not None:
+            eval_indices = [i for i, m in enumerate(metadata) if m["crack_no"] == single_crack]
+            true_shapes_eval = [metadata[i]["true_shape"] for i in eval_indices]
+            true_wld_eval = np.array([[metadata[i]["true_w"], metadata[i]["true_l"], metadata[i]["true_d"]] for i in eval_indices])
+            pred_shapes_eval = [oof_pred_shapes[i] for i in eval_indices]
+            pred_wld_eval = oof_pred_wld[eval_indices]
+            stat_oof = compute_classification_metrics_and_matrix(true_shapes_eval, pred_shapes_eval)
+            reg_oof = compute_regression_metrics(true_wld_eval, pred_wld_eval)
+        else:
+            eval_indices = list(range(len(metadata)))
+            true_shapes_eval = [m["true_shape"] for m in metadata]
+            true_wld_eval = np.array([[m["true_w"], m["true_l"], m["true_d"]] for m in metadata])
+            pred_shapes_eval = oof_pred_shapes
+            pred_wld_eval = oof_pred_wld
+            stat_oof = compute_classification_metrics_and_matrix(true_shapes_eval, pred_shapes_eval)
+            reg_oof = compute_regression_metrics(true_wld_eval, pred_wld_eval)
 
-        stat_oof = compute_classification_metrics_and_matrix(true_shapes_all, oof_pred_shapes)
-        reg_oof = compute_regression_metrics(true_wld_all, oof_pred_wld)
-
-        # Xuất bảng chi tiết từng mẫu khi inference (toàn bộ 20 mẫu Out-of-Fold)
+        # Xuất bảng chi tiết từng mẫu khi inference
         pred_records_oof = []
-        for i, m in enumerate(metadata):
+        for i in eval_indices:
+            m = metadata[i]
             pred_records_oof.append({
                 "Filename": m["filename"],
                 "Crack_No": m.get("crack_no", i + 1),
@@ -890,7 +960,8 @@ def run_protocol_2_kfold_defect_split(
                 "True_D": m["true_d"], "Pred_D": round(float(oof_pred_wld[i, 2]), 4), "Err_D": round(float(abs(m["true_d"] - oof_pred_wld[i, 2])), 4),
             })
         df_oof_details = pd.DataFrame(pred_records_oof)
-        oof_detail_csv = os.path.join(tables_dir, f"predictions_protocol2_{key.lower()}.csv")
+        file_suffix = f"crack{single_crack}" if single_crack is not None else "10fold"
+        oof_detail_csv = os.path.join(tables_dir, f"predictions_protocol2_{key.lower()}_{file_suffix}.csv")
         df_oof_details.to_csv(oof_detail_csv, index=False)
 
         # Lưu TP, FP breakdown
@@ -898,49 +969,59 @@ def run_protocol_2_kfold_defect_split(
         df_tp_fp["Model"] = key
         all_models_tp_fp.append(df_tp_fp)
 
-        # Vẽ Confusion Matrix Out-of-Fold 20 mẫu vào figures_dir
-        cm_path = os.path.join(figures_dir, f"fig_protocol2_10fold_confusion_matrix_{key}")
+        # Vẽ Confusion Matrix vào 02_protocol2_10fold_lodo/confusion_matrices/
+        cm_path = os.path.join(subdirs_p2["cm"], f"cm_{key}")
         plot_confusion_matrix_ieee(
             confusion_matrix=stat_oof["confusion_matrix"],
             class_names=DEFAULT_UNIQUE_SHAPES,
-            model_name=f"{key} (10-Fold LODO)",
+            model_name=key,
             output_base_path=cm_path,
             acc_val=stat_oof["overall_acc"] if m_type != "xiong" else None,
         )
 
-        # Vẽ tương quan hồi quy tuyến tính kích thước W, L, D vào figures_dir
-        fit_path = os.path.join(figures_dir, f"fig_protocol2_regression_fit_{key}")
-        plot_linear_fit_wld_ieee(
-            true_wld=true_wld_all,
-            pred_wld=oof_pred_wld,
+        # Vẽ tương quan hồi quy kích thước 3D chuẩn IEEE vào 02_protocol2_10fold_lodo/regression_scatter/
+        fit_path = os.path.join(subdirs_p2["reg"], f"regression_scatter_{key}")
+        plot_regression_scatter_ieee(
+            true_wld=true_wld_eval,
+            pred_wld=pred_wld_eval,
             model_name=key,
             output_base_path=fit_path,
         )
 
-        # Xuất đồ thị chuẩn gói figures_ieee cho Protocol 2 (Fig 2 & Fig 3 Parity Box)
-        try:
-            from figures_ieee import plot_fig2_confusion_matrix, plot_fig3_regression_scatter
-            if m_type != "xiong":
-                plot_fig2_confusion_matrix(
-                    y_true=true_shapes_all,
-                    y_pred=oof_pred_shapes,
-                    unique_shapes=DEFAULT_UNIQUE_SHAPES,
-                    output_dir=figures_dir,
-                    filename_prefix=f"fig2_confusion_matrix_ieee_p2_{key}",
+        # Lưu checkpoint mô hình finetuned Protocol 2 (lưu trọng số tối ưu Best Epoch)
+        ckpt_p2_path = os.path.join(checkpoints_dir, f"finetuned_p2_{key.lower()}_{file_suffix}.pth")
+        best_ep = last_hist["best_epoch"] if (last_hist and "best_epoch" in last_hist) else epochs
+        torch.save({
+            "model_state_dict": f_model.state_dict(),
+            "model_type": m_type,
+            "variant": var,
+            "total_epochs": epochs,
+            "best_epoch": best_ep,
+            "use_final_epoch": use_final_epoch,
+            "freeze_backbone": freeze_backbone,
+            "lr": lr,
+        }, ckpt_p2_path)
+        print(f"    [Checkpoint Best Epoch {best_ep}] Đã lưu mô hình tối ưu Protocol 2 vào: {os.path.basename(ckpt_p2_path)}")
+
+        # 5c. Kiểm định Quên tri thức cũ (Catastrophic Forgetting) trên tập Test mô phỏng Synthetic (3,306 mẫu)
+        if check_forgetting:
+            try:
+                evaluate_and_log_forgetting(
+                    pretrained_model=base_model,
+                    finetuned_model=f_model,
+                    model_name=key,
+                    bundle=bundle,
+                    output_dir=output_dir,
+                    protocol_name=f"protocol2_lodo_{file_suffix}",
+                    device=device,
                 )
-            plot_fig3_regression_scatter(
-                y_true_wld=true_wld_all,
-                y_pred_wld=oof_pred_wld,
-                output_dir=figures_dir,
-                filename_prefix=f"fig3_regression_scatter_ieee_p2_{key}",
-            )
-        except Exception as e_fig:
-            print(f"    [figures_ieee] Cảnh báo xuất hình: {e_fig}")
+            except Exception as e_fgt2:
+                print(f"    [Forgetting Check Cảnh báo] {e_fgt2}")
 
         summary_rows.append({
-            "Protocol": "Protocol 2 (10-Fold LODO)",
+            "Protocol": f"Protocol 2 ({file_suffix.upper()})",
             "Model": key,
-            "Total_Samples": len(metadata),
+            "Total_Samples": len(eval_indices),
             "Total_Correct": stat_oof["total_correct"] if m_type != "xiong" else np.nan,
             "ACC(%)": stat_oof["overall_acc"] if m_type != "xiong" else np.nan,
             "NMAE_Overall(%)": reg_oof["NMAE_Avg(%)"],
@@ -961,16 +1042,11 @@ def run_protocol_2_kfold_defect_split(
     csv_tp_fp = os.path.join(tables_dir, "protocol2_tp_fp_breakdown.csv")
     df_tp_fp_all.to_csv(csv_tp_fp, index=False)
 
-    # Vẽ biểu đồ so sánh tổng hợp vào figures_dir
-    plot_benchmark_comparison_ieee(
+    # Vẽ biểu đồ cột đánh giá chỉ số Accuracy, NMAE & MAE từng chiều vào 02_protocol2_10fold_lodo/performance_metrics/
+    plot_protocol_metrics_ieee(
         df_results=df_p2,
-        output_base_path=os.path.join(figures_dir, "fig_protocol2_comparison_acc_mae"),
-    )
-
-    # Vẽ biểu đồ MAE từng chiều W, L, D độc lập với trục tung tối ưu
-    plot_dimensional_mae_breakdown_ieee(
-        df_results=df_p2,
-        output_base_path=os.path.join(figures_dir, "fig_protocol2_wld_mae_breakdown"),
+        out_dir_metrics=subdirs_p2["metrics"],
+        protocol_num=2,
     )
 
     print(f"\n[HOÀN THÀNH HƯỚNG 2] Bảng tổng hợp đã lưu vào: {csv_p2}")
@@ -1017,17 +1093,16 @@ def setup_run_directory(args: argparse.Namespace, project_root: str) -> Tuple[st
         now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         p_str = f"p{args.protocol}" if args.protocol in ["1", "2"] else "pAll"
         frz_str = "freeze_bb" if args.freeze_backbone else "train_all"
+        bn_str = "freeze_bn" if getattr(args, "freeze_bn", True) else "train_bn"
         kd_str = "reset_kd" if args.reset_kendall else "keep_kd"
         lr_str = f"fixed_lr{args.lr:g}" if getattr(args, "fixed_lr", True) else f"cos_lr{args.lr:g}"
         ep_str = f"ep{args.epochs}"
-        if args.use_pinn_loss is None:
-            loss_str = "native_loss"
-        elif args.use_pinn_loss:
-            loss_str = "force_pinn"
+        if getattr(args, "use_pinn_loss", True):
+            loss_str = "pinn_loss"
         else:
-            loss_str = "force_nopinn"
+            loss_str = "supervised_loss"
 
-        parts = ["run", now_str, p_str, frz_str, kd_str, lr_str, ep_str, loss_str]
+        parts = ["run", now_str, p_str, frz_str, bn_str, kd_str, lr_str, ep_str, loss_str]
         if getattr(args, "tag", None) and str(args.tag).strip():
             parts.append(str(args.tag).strip())
         run_name = "_".join(parts)
@@ -1049,6 +1124,7 @@ def setup_run_directory(args: argparse.Namespace, project_root: str) -> Tuple[st
         "patience": args.patience,
         "early_stopping": not args.no_early_stopping,
         "freeze_backbone": args.freeze_backbone,
+        "freeze_bn": getattr(args, "freeze_bn", True),
         "reset_kendall": args.reset_kendall,
         "use_pinn_loss": args.use_pinn_loss,
         "save_final": args.save_final,
@@ -1092,8 +1168,8 @@ def finalize_run_environment(
         f"Thời gian bắt đầu : {config_dict['start_time']}",
         f"Thời gian kết thúc: {config_dict['end_time']} (Tổng cộng: {duration_sec:.1f}s)",
         f"Thư mục lưu trữ   : {run_dir}",
-        f"Cấu hình mô hình  : Freeze Backbone = {config_dict['freeze_backbone']} | Reset Kendall = {config_dict['reset_kendall']}",
-        f"Siêu tham số      : LR = {config_dict['lr']} | Epochs = {config_dict['epochs']} | Loss Mode = {'Native (Mô hình nào gọi đúng Loss đó)' if config_dict['use_pinn_loss'] is None else ('Force PINN' if config_dict['use_pinn_loss'] else 'Force NoPINN')}",
+        f"Cấu hình mô hình  : Freeze Backbone = {config_dict['freeze_backbone']} | Freeze BN = {config_dict.get('freeze_bn', True)} | Reset Kendall = {config_dict['reset_kendall']}",
+        f"Siêu tham số      : LR = {config_dict['lr']} | Epochs = {config_dict['epochs']} | Loss Mode = {'Force PINN Loss' if config_dict['use_pinn_loss'] else 'Thuần Supervised Data Loss (CNN_Proposed y hệt CNN_NoPINN)'}",
         "-" * 80,
     ]
 
@@ -1188,7 +1264,7 @@ def main():
     parser.add_argument("--models", "--model", type=str, default="cnn_proposed,cnn_nopinn",
                         help="Mô hình cần chạy: 'cnn_proposed', 'cnn_nopinn', 'mlp', 'xiong', hoặc 'all' (mặc định: 'cnn_proposed,cnn_nopinn')")
     parser.add_argument("--epochs", type=int, default=500, help="Số epochs finetuning (mặc định: 500)")
-    parser.add_argument("--lr", type=float, default=5e-3, help="Tốc độ học cố định (Fixed LR) khi finetuning (mặc định: 5e-3)")
+    parser.add_argument("--lr", type=float, default=1e-5, help="Tốc độ học cố định (Fixed LR) khi finetuning (mặc định: 1e-5)")
     parser.add_argument("--fixed_lr", dest="fixed_lr", action="store_true", default=True,
                         help="Giữ tốc độ học (LR) cố định trong suốt quá trình finetuning (mặc định: True)")
     parser.add_argument("--use_scheduler", dest="fixed_lr", action="store_false",
@@ -1198,22 +1274,32 @@ def main():
                         help="Bỏ Early Stopping, chạy đủ số epochs (mặc định: True)")
     parser.add_argument("--early_stopping", dest="no_early_stopping", action="store_false",
                         help="Bật lại Early Stopping (mặc định: tắt Early Stopping)")
-    parser.add_argument("--use_pinn_loss", dest="use_pinn_loss", action="store_true", default=None,
-                        help="Ép buộc bật PINN physics loss cho tất cả các mô hình")
+    parser.add_argument("--use_pinn_loss", dest="use_pinn_loss", action="store_true", default=True,
+                        help="Bật PINN physics loss khi finetuning (mặc định: True)")
     parser.add_argument("--no_pinn_loss", dest="use_pinn_loss", action="store_false",
-                        help="Tắt hoàn toàn PINN physics loss (chỉ dùng supervised data loss)")
+                        help="Tắt PINN physics loss khi finetuning (chuyển sang Supervised Data Loss thuần)")
+    parser.add_argument("--check_forgetting", dest="check_forgetting", action="store_true", default=True,
+                        help="Tự động kiểm định hiện tượng Quên tri thức cũ (Catastrophic Forgetting) trên tập Test mô phỏng Synthetic (3,306 mẫu) sau khi Finetune (mặc định: True)")
+    parser.add_argument("--no_check_forgetting", dest="check_forgetting", action="store_false",
+                        help="Tắt bước kiểm định hiện tượng quên tri thức cũ")
     parser.add_argument("--save_best", dest="save_final", action="store_false", default=False,
                         help="Khôi phục mô hình tại best val epoch thay vì epoch cuối (mặc định: True - lấy kết quả tốt nhất)")
     parser.add_argument("--save_final", dest="save_final", action="store_true",
                         help="Lưu và đánh giá kết quả tại epoch cuối cùng thay vì checkpoint tốt nhất")
-    parser.add_argument("--freeze_backbone", dest="freeze_backbone", action="store_true",
-                        help="Đóng băng Backbone khi finetuning")
-    parser.add_argument("--no_freeze_backbone", dest="freeze_backbone", action="store_false", default=False,
-                        help="Không đóng băng Backbone, finetune toàn bộ mô hình (mặc định: True - finetune toàn bộ)")
+    parser.add_argument("--freeze_backbone", dest="freeze_backbone", action="store_true", default=True,
+                        help="Đóng băng Backbone khi finetuning, chỉ cập nhật 2 nhánh Headers (mặc định: True)")
+    parser.add_argument("--no_freeze_backbone", dest="freeze_backbone", action="store_false",
+                        help="Không đóng băng Backbone, finetune toàn bộ mô hình")
+    parser.add_argument("--freeze_bn", dest="freeze_bn", action="store_true", default=True,
+                        help="Đóng băng BatchNorm (khóa running stats & affine weights ở eval mode) khi finetuning (mặc định: True)")
+    parser.add_argument("--no_freeze_bn", dest="freeze_bn", action="store_false",
+                        help="Không đóng băng BatchNorm, cho phép cập nhật thống kê running stats theo batch thực nghiệm")
     parser.add_argument("--reset_kendall", dest="reset_kendall", action="store_true", default=True,
                         help="Reset tham số Kendall uncertainty về 0.0 (exp(-s) = 1.0) khi finetuning (mặc định: True)")
     parser.add_argument("--no_reset_kendall", dest="reset_kendall", action="store_false",
                         help="Bảo tồn nguyên vẹn tham số Kendall uncertainty từ pretrained checkpoint")
+    parser.add_argument("--crack", type=int, default=None,
+                        help="Chỉ định số hiệu vết nứt (1-10) để bỏ ra làm Test mù (Leave-One-Defect-Out). Mặc định: None (chạy đủ cả 10 folds)")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--run_name", type=str, default=None,
                         help="Tên thư mục run riêng biệt (ví dụ: 'exp_freeze_lr1e4'). Nếu không cung cấp, hệ thống tự động sinh tên thư mục kèm timestamp và tham số cấu hình.")
@@ -1248,14 +1334,13 @@ def main():
         if not models_to_run:
             raise ValueError(f"Không tìm thấy mô hình phù hợp với: '{args.models}'. Lựa chọn hợp lệ: {[m['key'] for m in MODELS_SUITE]}")
 
-    if use_pinn_loss is None:
-        loss_mode_str = "Tự động theo bản thể mô hình (PINN gọi Physics PINN Loss, NoPINN gọi thuần Data Loss)"
-    elif use_pinn_loss:
-        loss_mode_str = "Ép buộc bật PINN Physics Loss cho toàn bộ mô hình"
+    if use_pinn_loss:
+        loss_mode_str = "Bật PINN Physics Loss cho mô hình Proposed"
     else:
-        loss_mode_str = "Ép buộc tắt PINN Physics Loss (Chỉ dùng Supervised Data Loss)"
+        loss_mode_str = "Thuần Supervised Data Loss (CNN_Proposed y hệt CNN_NoPINN)"
     print(f"\n[DANH SÁCH MÔ HÌNH THỰC THI]: {[m['key'] for m in models_to_run]}")
-    print(f"[CẤU HÌNH BENCHMARK]: Epochs = {args.epochs} | Early Stopping = {early_stopping} | Reset Kendall = {reset_kendall} | Hàm Loss = {loss_mode_str} | Lưu kết quả = {'Epoch cuối cùng' if use_final_epoch else 'Best Val Loss (Mặc định)'}")
+    crack_log = f" | Crack Test = No.{args.crack}" if args.crack is not None else " | K-Fold = Đầy đủ 10 Folds"
+    print(f"[CẤU HÌNH BENCHMARK]: Epochs = {args.epochs}{crack_log} | Early Stopping = {early_stopping} | Reset Kendall = {reset_kendall} | Hàm Loss = {loss_mode_str} | Lưu kết quả = {'Epoch cuối cùng' if use_final_epoch else 'Best Val Loss (Mặc định)'}")
 
     # Tự động khởi tạo thư mục lưu trữ riêng biệt (isolated run directory)
     output_dir, run_name, config_dict = setup_run_directory(args, PROJECT_ROOT)
@@ -1270,6 +1355,7 @@ def main():
             epochs=args.epochs,
             lr=args.lr,
             freeze_backbone=args.freeze_backbone,
+            freeze_bn=args.freeze_bn,
             patience=args.patience,
             device=args.device,
             output_dir=output_dir,
@@ -1278,6 +1364,7 @@ def main():
             use_final_epoch=use_final_epoch,
             use_pinn_loss=use_pinn_loss,
             fixed_lr=args.fixed_lr,
+            check_forgetting=args.check_forgetting,
         )
 
     if args.protocol in ["2", "all"]:
@@ -1286,6 +1373,7 @@ def main():
             epochs=args.epochs,
             lr=args.lr,
             freeze_backbone=args.freeze_backbone,
+            freeze_bn=args.freeze_bn,
             patience=args.patience,
             device=args.device,
             output_dir=output_dir,
@@ -1294,13 +1382,23 @@ def main():
             use_final_epoch=use_final_epoch,
             use_pinn_loss=use_pinn_loss,
             fixed_lr=args.fixed_lr,
+            single_crack=args.crack,
+            check_forgetting=args.check_forgetting,
         )
 
-    # Nếu chạy cả 2 giao thức, tự động vẽ đồ thị so sánh trực diện kết quả FINETUNED giữa 2 cách chia data
+    # Tự động so sánh liên giao thức nếu có đủ cả 2 giao thức
     if df_p1 is not None and df_p2 is not None:
-        cross_fig_path = os.path.join(output_dir, "figures", "fig_comparison_finetuned_two_protocols")
-        plot_finetuned_two_protocols_comparison(df_p1, df_p2, cross_fig_path)
-        print(f"\n[OK] Đã vẽ đồ thị so sánh kết quả Finetuned giữa 2 cách chia data vào: {cross_fig_path}.png & .pdf")
+        try:
+            dir_cross = get_cross_protocol_dir(os.path.join(output_dir, "figures"))
+            plot_finetuned_two_protocols_comparison(df_p1, df_p2, dir_cross)
+        except Exception as e_cp:
+            print(f"    [Cross-Protocol Plot] Cảnh báo vẽ so sánh liên giao thức: {e_cp}")
+
+    # Đồng bộ và hoàn thiện toàn bộ biểu đồ chuẩn IEEE Transactions vào các thư mục riêng biệt
+    try:
+        generate_all_organized_figures_from_run(output_dir)
+    except Exception as e_org:
+        print(f"    [Figures Organized] Cảnh báo tạo thư mục biểu đồ: {e_org}")
 
     # Tổng kết và hoàn tất đợt chạy: ghi summary, history csv và đồng bộ kết quả
     finalize_run_environment(

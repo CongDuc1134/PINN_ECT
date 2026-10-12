@@ -26,7 +26,9 @@ Outputs_*/
 *.npz
 checkpoint_temp/
 domain_adaptation/finetune_results/
+domain_adaptation/finetune_results_*/
 domain_adaptation/experiments_lr_study/
+output/
 
 # ==============================================================================
 # 4. Logs & Temporary Files

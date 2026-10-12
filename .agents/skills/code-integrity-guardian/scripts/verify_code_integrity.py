@@ -37,19 +37,32 @@ BUILTIN_NAMES = set(dir(builtins)) | {
 class ScopeAnalyzer(ast.NodeVisitor):
     def __init__(self, filename):
         self.filename = filename
-        self.defined_names = set(BUILTIN_NAMES)
+        self.scope_stack = [set(BUILTIN_NAMES)] # [global_scope, local_scope_1, ...]
         self.imported_modules = set()
         self.imported_names = set()
-        self.used_names = [] # list of (name, lineno, col_offset)
+        self.undefined_names = [] # list of (name, lineno, col_offset)
         self.wildcard_imports = [] # list of (module_name, lineno)
         self.function_defs = {} # name -> list of arg names
         self.class_defs = set()
         self.deferred_blocks = [] # (type, lineno)
+        self.global_vars = set()
+
+    def current_scope(self):
+        return self.scope_stack[-1]
+
+    def is_defined(self, name):
+        return any(name in s for s in reversed(self.scope_stack))
+
+    def define(self, name):
+        if name in self.global_vars:
+            self.scope_stack[0].add(name)
+        else:
+            self.scope_stack[-1].add(name)
 
     def visit_Import(self, node):
         for alias in node.names:
             name = alias.asname if alias.asname else alias.name.split('.')[0]
-            self.defined_names.add(name)
+            self.define(name)
             self.imported_modules.add(alias.name)
         self.generic_visit(node)
 
@@ -60,76 +73,114 @@ class ScopeAnalyzer(ast.NodeVisitor):
                 self.wildcard_imports.append((module, node.lineno))
             else:
                 name = alias.asname if alias.asname else alias.name
-                self.defined_names.add(name)
+                self.define(name)
                 self.imported_names.add(name)
         self.generic_visit(node)
 
-    def visit_FunctionDef(self, node):
-        self.defined_names.add(node.name)
-        # Lưu chữ ký hàm
-        args = [a.arg for a in node.args.args]
-        self.function_defs[node.name] = args
-        
-        # Thêm đối số vào scope định nghĩa
-        for arg in node.args.args:
-            self.defined_names.add(arg.arg)
-        if node.args.vararg:
-            self.defined_names.add(node.args.vararg.arg)
-        if node.args.kwarg:
-            self.defined_names.add(node.args.kwarg.arg)
-        for arg in node.args.kwonlyargs:
-            self.defined_names.add(arg.arg)
-            
+    def visit_Global(self, node):
+        for name in node.names:
+            self.global_vars.add(name)
         self.generic_visit(node)
 
-    def visit_Lambda(self, node):
+    def visit_FunctionDef(self, node):
+        # Tên hàm được định nghĩa ở scope hiện tại (scope cha)
+        self.define(node.name)
+        args = [a.arg for a in node.args.args]
+        self.function_defs[node.name] = args
+
+        # Đẩy scope hàm mới vào stack
+        fn_scope = set()
         for arg in node.args.args:
-            self.defined_names.add(arg.arg)
+            fn_scope.add(arg.arg)
         if node.args.vararg:
-            self.defined_names.add(node.args.vararg.arg)
+            fn_scope.add(node.args.vararg.arg)
         if node.args.kwarg:
-            self.defined_names.add(node.args.kwarg.arg)
+            fn_scope.add(node.args.kwarg.arg)
         for arg in node.args.kwonlyargs:
-            self.defined_names.add(arg.arg)
-        self.generic_visit(node)
+            fn_scope.add(arg.arg)
+
+        # Xử lý defaults ở scope cha trước khi vào hàm
+        for d in node.args.defaults:
+            self.visit(d)
+        for d in node.args.kw_defaults:
+            if d is not None:
+                self.visit(d)
+        for deco in node.decorator_list:
+            self.visit(deco)
+
+        self.scope_stack.append(fn_scope)
+        for item in node.body:
+            self.visit(item)
+        self.scope_stack.pop()
 
     def visit_AsyncFunctionDef(self, node):
         self.visit_FunctionDef(node)
 
+    def visit_Lambda(self, node):
+        lambda_scope = set()
+        for arg in node.args.args:
+            lambda_scope.add(arg.arg)
+        if node.args.vararg:
+            lambda_scope.add(node.args.vararg.arg)
+        if node.args.kwarg:
+            lambda_scope.add(node.args.kwarg.arg)
+        for arg in node.args.kwonlyargs:
+            lambda_scope.add(arg.arg)
+
+        self.scope_stack.append(lambda_scope)
+        self.visit(node.body)
+        self.scope_stack.pop()
+
     def visit_ClassDef(self, node):
-        self.defined_names.add(node.name)
+        self.define(node.name)
         self.class_defs.add(node.name)
-        self.generic_visit(node)
+        for base in node.bases:
+            self.visit(base)
+        for deco in node.decorator_list:
+            self.visit(deco)
+
+        # Scope class
+        self.scope_stack.append(set())
+        for item in node.body:
+            self.visit(item)
+        self.scope_stack.pop()
 
     def visit_Name(self, node):
         if isinstance(node.ctx, ast.Store):
-            self.defined_names.add(node.id)
+            self.define(node.id)
         elif isinstance(node.ctx, ast.Load):
-            self.used_names.append((node.id, node.lineno, node.col_offset))
+            if not self.is_defined(node.id):
+                self.undefined_names.append((node.id, node.lineno, node.col_offset))
         self.generic_visit(node)
 
     def visit_ListComp(self, node):
+        self.scope_stack.append(set())
         for gen in node.generators:
             self._extract_target_names(gen.target)
-        self.generic_visit(node)
+            self.visit(gen.iter)
+            for if_expr in gen.ifs:
+                self.visit(if_expr)
+        self.visit(node.elt)
+        self.scope_stack.pop()
 
     def visit_SetComp(self, node):
-        for gen in node.generators:
-            self._extract_target_names(gen.target)
-        self.generic_visit(node)
+        self.visit_ListComp(node)
 
     def visit_DictComp(self, node):
+        self.scope_stack.append(set())
         for gen in node.generators:
             self._extract_target_names(gen.target)
-        self.generic_visit(node)
+            self.visit(gen.iter)
+            for if_expr in gen.ifs:
+                self.visit(if_expr)
+        self.visit(node.key)
+        self.visit(node.value)
+        self.scope_stack.pop()
 
     def visit_GeneratorExp(self, node):
-        for gen in node.generators:
-            self._extract_target_names(gen.target)
-        self.generic_visit(node)
+        self.visit_ListComp(node)
 
     def visit_For(self, node):
-        # Biến trong vòng lặp for
         self._extract_target_names(node.target)
         self.generic_visit(node)
 
@@ -141,11 +192,10 @@ class ScopeAnalyzer(ast.NodeVisitor):
 
     def visit_ExceptHandler(self, node):
         if node.name:
-            self.defined_names.add(node.name)
+            self.define(node.name)
         self.generic_visit(node)
 
     def visit_If(self, node):
-        # Đánh dấu các khối điều kiện có thể là deferred execution (epoch % ... hoặc is_best)
         cond_src = ast.unparse(node.test) if hasattr(ast, 'unparse') else ""
         if any(keyword in cond_src for keyword in ["epoch", "save", "eval", "test", "step %", "is_best"]):
             self.deferred_blocks.append((cond_src, node.lineno))
@@ -153,7 +203,7 @@ class ScopeAnalyzer(ast.NodeVisitor):
 
     def _extract_target_names(self, target):
         if isinstance(target, ast.Name):
-            self.defined_names.add(target.id)
+            self.define(target.id)
         elif isinstance(target, (ast.Tuple, ast.List)):
             for elt in target.elts:
                 self._extract_target_names(elt)
@@ -186,16 +236,12 @@ def audit_file(filepath):
     analyzer = ScopeAnalyzer(filepath)
     analyzer.visit(tree)
 
-    # 2. Tìm biến / hàm chưa định nghĩa
-    # Ngoại trừ các trường hợp đặc biệt do dynamic lookup
-    undefined = []
+    # 2. Lấy danh sách biến / hàm chưa định nghĩa từ ScopeAnalyzer
     has_wildcard = len(analyzer.wildcard_imports) > 0
-
-    for name, lineno, col in analyzer.used_names:
-        if name not in analyzer.defined_names:
-            # Nếu có wildcard import, một số hàm có thể đến từ wildcard
-            source_hint = " (Lưu ý: file có dùng 'import *' nên có thể ẩn trong wildcard)" if has_wildcard else ""
-            undefined.append((name, lineno, source_hint))
+    undefined = []
+    for name, lineno, col in analyzer.undefined_names:
+        source_hint = " (Lưu ý: file có dùng 'import *' nên có thể ẩn trong wildcard)" if has_wildcard else ""
+        undefined.append((name, lineno, source_hint))
 
     results["undefined_names"] = undefined
     results["wildcard_imports"] = analyzer.wildcard_imports

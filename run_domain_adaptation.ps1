@@ -11,13 +11,19 @@
 #   .\run_domain_adaptation.ps1 all            (Chạy cả Protocol 1 & 2 cho toàn bộ mô hình)
 #   .\run_domain_adaptation.ps1 cnn            (Chạy riêng cho mô hình CNN Proposed vs NoPINN)
 #   .\run_domain_adaptation.ps1 test           (Quick smoke test 1 epoch)
-#   .\run_domain_adaptation.ps1 pretrain       (Tiền huấn luyện CNN Synthetic PINN & NoPINN)
 # ==============================================================================
 
 param(
     [string]$Mode = "",
     [string]$Lrs = "1e-3,5e-4,1e-4",
     [int]$Epochs = 0,
+    [double]$Lr = 0,
+    [int]$Crack = 0,
+    [switch]$NoFreezeBackbone,
+    [switch]$NoFreezeBn,
+    [switch]$NoPinnLoss,
+    [switch]$NoCheckForgetting,
+    [switch]$SaveFinal,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ExtraArgs
 )
@@ -54,8 +60,36 @@ function Show-Header {
     Write-Host "       ECT DOMAIN ADAPTATION & PINN BENCHMARK: MASTER RUNNER" -ForegroundColor Cyan
     Write-Host "================================================================================" -ForegroundColor Cyan
     Write-Host "Python Executable : $PythonExe"
-    Write-Host "Workspace Root    : $ScriptDir"
-    Write-Host "Backbone Mode     : KHONG DONG BANG (Finetune toan bo mo hinh end-to-end)" -ForegroundColor Green
+    if ($NoFreezeBackbone) {
+        Write-Host "Backbone Mode     : KHONG DONG BANG (Finetune toan bo mo hinh end-to-end)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Backbone Mode     : DONG BANG BACKBONE (Chi cap nhat 2 nhanh Headers: Classification + Regression)" -ForegroundColor Green
+    }
+    if ($NoFreezeBn) {
+        Write-Host "BatchNorm Mode    : CAP NHAT BATCHNORM (Khong dong bang BN stats)" -ForegroundColor Yellow
+    } else {
+        Write-Host "BatchNorm Mode    : FREEZE BATCHNORM (Khoa thong ke running stats BN de on dinh bieu dien vat ly)" -ForegroundColor Green
+    }
+    if ($NoPinnLoss) {
+        Write-Host "Loss Function     : DONG BO SUPERVISED LOSS (CNN_Proposed y het CNN_NoPINN - Tat PINN Loss)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Loss Function     : BAT PINN LOSS (CNN_Proposed dung Data Loss + PINN Loss; CNN_NoPINN dung Data Loss thuan)" -ForegroundColor Green
+    }
+    if ($NoCheckForgetting) {
+        Write-Host "Forgetting Check  : TAT KIEM DINH QUEN TRI THUC" -ForegroundColor Yellow
+    } else {
+        Write-Host "Forgetting Check  : BAT KIEM DINH QUEN TRI THUC (Test nguoc lai 3,306 mau Synthetic sau Finetune)" -ForegroundColor Green
+    }
+    if ($SaveFinal) {
+        Write-Host "Model Weights     : LUU VA DANH GIA EPOCH CUOI CUNG (Final Epoch)" -ForegroundColor Yellow
+    } else {
+        Write-Host "Model Weights     : LUU VA KHOI PHUC BEST EPOCH (Best Val/Train Loss - Mac dinh toi uu)" -ForegroundColor Green
+    }
+    if ($Lr -gt 0) {
+        Write-Host "Learning Rate     : $Lr (Chi dinh thu cong)" -ForegroundColor Green
+    } else {
+        Write-Host "Learning Rate     : 1e-5 (Mac dinh toi uu khi Freeze Backbone)" -ForegroundColor Green
+    }
     Write-Host ""
     try {
         & $PythonExe -c "import torch; print(f'Hardware Status   : GPU: {torch.cuda.get_device_name(0)} | CUDA: {torch.cuda.is_available()}')" 2>$null
@@ -66,12 +100,12 @@ function Show-Header {
 if ($IsInteractive) {
     Show-Header
     Write-Host ""
-    Write-Host "Hay chon che do chay benchmark (Mac dinh: Finetune toan bo mo hinh, khong freeze):" -ForegroundColor Yellow
+    Write-Host "Hay chon che do chay benchmark (Mac dinh: Freeze Backbone, LR=1e-5, Save Best Epoch):" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  [1] Chay CA 2 GIAO THUC (Protocol 1 & 2 - Khong freeze backbone) [Khuyen nghi]"
-    Write-Host "  [2] Chay GIAO THUC 1 (Scan 1 Train / Scan 2 Test - Khong freeze backbone)"
-    Write-Host "  [3] Chay GIAO THUC 2 (10-Fold Defect LODO - Khong freeze backbone)"
-    Write-Host "  [4] Chay rieng cho mo hinh CNN (CNN_Proposed PINN vs CNN_NoPINN)"
+    Write-Host "  [1] Chay CA 2 GIAO THUC (Protocol 1 & 2 - Freeze Backbone, LR=1e-5, Best Epoch) [Khuyen nghi]"
+    Write-Host "  [2] Chay GIAO THUC 1 (Scan 1 Train / Scan 2 Test - Freeze Backbone, LR=1e-5, Best Epoch)"
+    Write-Host "  [3] Chay GIAO THUC 2 (10-Fold Defect LODO - Freeze Backbone, LR=1e-5, Best Epoch)"
+    Write-Host "  [4] Chay rieng cho mo hinh CNN (CNN_Proposed PINN vs CNN_NoPINN - Freeze Backbone, LR=1e-5)"
     Write-Host "  [5] Chay Quick Smoke Test (1 epoch de kiem tra nhanh)"
     Write-Host "  [6] Khao sat 3 muc Learning Rate (1e-3, 5e-4, 1e-4) -> So sanh PINN vs NoPINN"
     Write-Host "  [7] Tien huan luyen CNN tren du lieu mo phong Synthetic (PINN & NoPINN)"
@@ -118,7 +152,38 @@ if ($Mode.ToLower() -in @("pretrain", "7")) {
 }
 
 $BenchmarkScript = "domain_adaptation\benchmark_evaluation_protocols.py"
-$CmdArgs = @($BenchmarkScript, "--no_freeze_backbone")
+$CmdArgs = @($BenchmarkScript)
+
+if ($NoFreezeBackbone) {
+    $CmdArgs += @("--no_freeze_backbone")
+} else {
+    $CmdArgs += @("--freeze_backbone")
+}
+if ($NoFreezeBn) {
+    $CmdArgs += @("--no_freeze_bn")
+} else {
+    $CmdArgs += @("--freeze_bn")
+}
+if ($NoPinnLoss) {
+    $CmdArgs += @("--no_pinn_loss")
+} else {
+    $CmdArgs += @("--use_pinn_loss")
+}
+if ($NoCheckForgetting) {
+    $CmdArgs += @("--no_check_forgetting")
+} else {
+    $CmdArgs += @("--check_forgetting")
+}
+if ($SaveFinal) {
+    $CmdArgs += @("--save_final")
+} else {
+    $CmdArgs += @("--save_best")
+}
+if ($Lr -gt 0) { 
+    $CmdArgs += @("--lr", $Lr.ToString()) 
+} else {
+    $CmdArgs += @("--lr", "1e-5")
+}
 
 switch ($Mode.ToLower()) {
     { $_ -in @("all", "1") } {
@@ -132,9 +197,10 @@ switch ($Mode.ToLower()) {
         if ($Epochs -gt 0) { $CmdArgs += @("--epochs", $Epochs.ToString()) }
     }
     { $_ -in @("p2", "3") } {
-        Write-Host "[START] Dang khoi chay GIAO THUC 2 (10-Fold Leave-One-Defect-Out)..." -ForegroundColor Cyan
+        Write-Host "[START] Dang khoi chay GIAO THUC 2 (Leave-One-Defect-Out)..." -ForegroundColor Cyan
         $CmdArgs += @("--protocol", "2")
         if ($Epochs -gt 0) { $CmdArgs += @("--epochs", $Epochs.ToString()) }
+        if ($Crack -gt 0) { $CmdArgs += @("--crack", $Crack.ToString()) }
     }
     { $_ -in @("cnn", "4") } {
         Write-Host "[START] Dang khoi chay Benchmark rieng cho mo hinh CNN (Proposed vs NoPINN)..." -ForegroundColor Cyan
@@ -149,7 +215,22 @@ switch ($Mode.ToLower()) {
         $targetEpochs = if ($Epochs -gt 0) { $Epochs } else { 500 }
         Write-Host "[START] Dang khoi chay Khao sat 3 muc Learning Rate ($Lrs, $targetEpochs epochs) so sanh PINN vs NoPINN..." -ForegroundColor Cyan
         $BenchmarkScript = "domain_adaptation\run_lr_experiments.py"
-        $CmdArgs = @($BenchmarkScript, "--lrs", $Lrs, "--epochs", $targetEpochs.ToString(), "--protocol", "1", "--models", "cnn_proposed,cnn_nopinn", "--no_freeze_backbone")
+        $CmdArgs = @($BenchmarkScript, "--lrs", $Lrs, "--epochs", $targetEpochs.ToString(), "--protocol", "1", "--models", "cnn_proposed,cnn_nopinn")
+        if ($NoFreezeBackbone) {
+            $CmdArgs += @("--no_freeze_backbone")
+        } else {
+            $CmdArgs += @("--freeze_backbone")
+        }
+        if ($NoFreezeBn) {
+            $CmdArgs += @("--no_freeze_bn")
+        } else {
+            $CmdArgs += @("--freeze_bn")
+        }
+        if ($NoPinnLoss) {
+            $CmdArgs += @("--no_pinn_loss")
+        } else {
+            $CmdArgs += @("--use_pinn_loss")
+        }
     }
     default {
         Write-Host "[LOI] Che do '$Mode' khong hop le. Cac che do ho tro: all, p1, p2, cnn, test, lr, pretrain" -ForegroundColor Red
